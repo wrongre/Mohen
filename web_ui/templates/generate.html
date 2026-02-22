@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI Handwriting Synthesis Studio</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <script src="/static/js/imagetracer.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "lab-bg": "#0D1117",
+                        "lab-border": "#30363D",
+                        "lab-blue": "#00A3FF",
+                        "lab-green": "#A6FF00",
+                        "lab-card": "#161B22",
+                        "lab-muted": "#8B949E",
+                        "background-light": "#FFFFFF",
+                        "background-dark": "#0D1117",
+                        "paper-light": "#E6E6E6", // Darker Rice Paper
+                        "paper-dark": "#1A1D21", 
+                        "primary": "#00A3FF"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-300 font-display;
+            }
+        }
+        /* Custom paper texture effect */
+        .paper-texture {
+            background-color: #E6E6E6; /* Darker fallback */
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.1);
+        }
+        .dark .paper-texture {
+            background-color: #1A1D21; 
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            opacity: 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #30363D;
+            border-radius: 10px;
+        }
+        input[type="range"] {
+            @apply appearance-none bg-lab-border h-1 rounded-full;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            @apply appearance-none w-3 h-3 bg-lab-blue rounded-full cursor-pointer hover:ring-4 hover:ring-lab-blue/20 transition-all;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-300">
+    
+    <!-- Top Navigation -->
+    <header class="border-b border-lab-border bg-lab-bg/95 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-[1400px] mx-auto px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 flex items-center justify-center bg-lab-blue/10 rounded border border-lab-blue/30">
+                    <img src="/static/mohen.svg" class="w-5 h-5" alt="MoHen Logo" />
+                </div>
+                <div class="flex flex-col leading-none">
+                    <h1 class="text-[11px] font-black tracking-[0.25em] text-white uppercase">Handwriting Lab</h1>
+                    <span class="text-[9px] font-bold text-lab-blue tracking-widest uppercase">Version 1.2</span>
+                </div>
+            </div>
+            <div class="flex items-center h-full gap-8">
+                <nav class="flex h-full">
+                    <a class="px-6 flex items-center text-[11px] font-bold uppercase tracking-[0.2em] text-lab-muted hover:text-white transition-colors h-full" href="/">Clone</a>
+                    <a class="px-6 flex items-center text-[11px] font-bold uppercase tracking-[0.2em] text-lab-blue border-b-2 border-lab-blue h-full" href="/generate">Generate</a>
+                </nav>
+                <div class="flex items-center gap-5 border-l border-lab-border pl-8">
+                    <div class="w-8 h-8 rounded border border-lab-border bg-lab-card flex items-center justify-center">
+                        <span class="material-symbols-outlined text-sm text-lab-muted">person</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Controls -->
+        <section class="w-[380px] border-r border-lab-border flex flex-col bg-lab-card overflow-y-auto custom-scrollbar">
+            <div class="p-6 space-y-8">
+                
+                <!-- Content Input -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-end">
+                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Content Input</label>
+                        <span class="text-[9px] font-mono text-slate-600">UTF-8 / MULTI-LANG</span>
+                    </div>
+                    <div class="relative group">
+                        <textarea id="text-input" class="w-full h-48 bg-lab-bg border border-lab-border rounded-lg p-4 text-sm font-display leading-relaxed focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none transition-all placeholder:text-slate-700 custom-scrollbar text-white" placeholder="Enter text to synthesize...">天道酬勤。志之所趋，无远弗届，穷山距海，不能限也。志之所向，无坚不入，锐兵精甲，不能御也。</textarea>
+                        <div class="absolute bottom-3 right-3 text-[9px] font-mono text-slate-600">CHARS: <span id="char-count">42</span></div>
+                    </div>
+                </div>
+
+                <!-- Font Style Selection (New) -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-end">
+                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Font Style</label>
+                        <button onclick="openStyleManager()" class="text-[9px] font-mono text-lab-blue hover:underline">MANAGE STYLES</button>
+                    </div>
+                    <div class="relative">
+                        <select id="style-select" class="w-full bg-lab-bg border border-lab-border rounded-lg px-4 py-3 text-sm font-mono text-white appearance-none focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none cursor-pointer">
+                            <option value="">Loading styles...</option>
+                        </select>
+                        <div class="absolute right-3 top-3 pointer-events-none text-lab-muted">
+                            <span class="material-symbols-outlined text-sm">expand_more</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Run Button (Moved up) -->
+                <button id="run-btn" class="w-full bg-lab-green hover:bg-[#d9ff33] text-black font-bold py-4 rounded-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-lab-green/5">
+                    <span class="material-symbols-outlined">analytics</span>
+                    RUN SYNTHESIS ENGINE
+                </button>
+            </div>
+        </section>
+
+        <!-- Right Preview: Canvas -->
+        <section class="flex-1 relative bg-lab-bg overflow-hidden flex flex-col">
+            <!-- Canvas Container -->
+            <div class="absolute inset-0 flex items-center justify-center p-12 pb-32">
+                <!-- Paper Sheet -->
+                <div id="paper-sheet" class="w-full max-w-4xl aspect-[1.4/1] paper-texture rounded shadow-2xl shadow-black/50 relative overflow-hidden flex items-center justify-center p-12 group transition-all">
+                    <div class="w-full h-full text-zinc-900 dark:text-zinc-300 overflow-y-auto custom-scrollbar p-8">
+                        <div id="output-text" class="leading-relaxed text-5xl opacity-90 select-none mix-blend-multiply dark:mix-blend-normal font-serif min-h-[200px] flex flex-wrap content-start gap-2 items-center">
+                            <!-- Generated content will appear here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Paper Metadata -->
+                    <div class="absolute bottom-4 right-4 text-[9px] font-mono text-zinc-400 opacity-50">
+                        CANVAS: 2480 x 1754 px // 300DPI // RICE_PAPER_V2
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Refinement Toolbar (New) -->
+            <div class="absolute bottom-36 left-1/2 -translate-x-1/2 w-full max-w-xl z-20 flex flex-col gap-4 group">
+                <!-- Toolbar Body -->
+                <div class="bg-black/80 backdrop-blur-md border border-lab-border rounded-lg p-6 shadow-2xl transition-all duration-300 opacity-80 group-hover:opacity-100 hover:border-lab-blue/50">
+                    <div class="flex items-center justify-between text-[10px] font-mono uppercase text-lab-muted tracking-widest mb-4">
+                        <span>Real-time Synthesis Parameters</span>
+                        <span class="w-2 h-2 rounded-full bg-lab-green animate-pulse"></span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <div class="flex justify-between text-[10px] font-mono uppercase text-white">
+                                <span>Dynamic Variation</span>
+                                <span class="text-lab-blue" id="val-variation">0.64</span>
+                            </div>
+                            <input id="range-variation" class="w-full" type="range" min="0" max="100" value="64">
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between text-[10px] font-mono uppercase text-white">
+                                <span>Ink Density</span>
+                                <span class="text-lab-blue" id="val-density">0.82</span>
+                            </div>
+                            <input id="range-density" class="w-full" type="range" min="0" max="100" value="82">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Controls -->
+            <div class="absolute top-6 right-6 flex flex-col gap-2">
+                <button onclick="zoom(0.1)" class="p-2 bg-lab-card border border-lab-border rounded text-slate-400 hover:text-lab-blue transition-colors">
+                    <span class="material-symbols-outlined">zoom_in</span>
+                </button>
+                <button onclick="zoom(-0.1)" class="p-2 bg-lab-card border border-lab-border rounded text-slate-400 hover:text-lab-blue transition-colors">
+                    <span class="material-symbols-outlined">zoom_out</span>
+                </button>
+                <button onclick="resetZoom()" class="p-2 bg-lab-card border border-lab-border rounded text-slate-400 hover:text-lab-blue transition-colors">
+                    <span class="material-symbols-outlined">fit_screen</span>
+                </button>
+            </div>
+
+            <!-- Export Bar -->
+            <div class="mt-auto p-6 bg-lab-card/80 backdrop-blur-sm border-t border-lab-border grid grid-cols-1 gap-4">
+                <button onclick="exportPNG()" class="flex items-center justify-center gap-3 py-4 border border-lab-border rounded-xl text-slate-300 hover:bg-lab-bg hover:border-lab-blue/50 transition-all group">
+                    <span class="material-symbols-outlined text-slate-500 group-hover:text-lab-blue">image</span>
+                    <div class="text-left">
+                        <div class="text-xs font-bold uppercase">Export as High-Res PNG</div>
+                        <div class="text-[9px] text-slate-500 font-mono">LOSSLESS COMPRESSION</div>
+                    </div>
+                </button>
+                <!-- SVG Export Temporarily Disabled
+                <button onclick="exportSVG()" ...>
+                -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="h-10 px-6 border-t border-lab-border flex justify-between items-center text-[10px] font-mono text-slate-600 bg-lab-bg">
+        <div class="flex gap-6">
+            <span class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 bg-lab-blue/40 rounded-full"></span> 
+                GPU_ACCELERATION: ENABLED
+            </span>
+            <span>LATENCY: 142MS</span>
+            <span>MEM: 1.4GB / 8GB</span>
+        </div>
+        <div class="flex gap-4">
+            <span class="text-slate-700">|</span>
+            <span>PROTO_SYNTH_VER: 0.8.2-ALPHA</span>
+            <span>© 2024 LABS</span>
+        </div>
+    </footer>
+
+    <!-- Style Manager Modal -->
+    <div id="style-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-lab-card border border-lab-border w-[500px] max-h-[80vh] flex flex-col rounded-xl shadow-2xl transform scale-95 transition-transform duration-300" id="style-modal-content">
+            <div class="p-6 border-b border-lab-border flex justify-between items-center">
+                <h3 class="text-white font-bold text-lg">Manage Font Styles</h3>
+                <button onclick="closeStyleManager()" class="text-lab-muted hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4" id="style-list">
+                <!-- Styles will be injected here -->
+                <div class="text-center text-lab-muted py-8">Loading...</div>
+            </div>
+            <div class="p-6 border-t border-lab-border bg-lab-bg/50">
+                <button onclick="closeStyleManager()" class="w-full py-3 bg-lab-border/50 text-white rounded hover:bg-lab-border transition-colors text-xs font-bold uppercase tracking-wider">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Character Counter
+        const textInput = document.getElementById('text-input');
+        const charCount = document.getElementById('char-count');
+        const outputText = document.getElementById('output-text');
+        const runBtn = document.getElementById('run-btn');
+
+        textInput.addEventListener('input', () => {
+            charCount.textContent = textInput.value.length;
+        });
+
+        // Run Synthesis
+        runBtn.addEventListener('click', () => {
+            const text = textInput.value;
+            const style = styleSelect.value;
+            const variation = rangeVariation.value;
+            const density = rangeDensity.value;
+            
+            if (!style) {
+                alert('Please select a font style first.');
+                return;
+            }
+            if (!text.trim()) {
+                alert('Please enter some text.');
+                return;
+            }
+            
+            const originalText = runBtn.innerHTML;
+            runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING NEURAL OUTPUT...`;
+            runBtn.classList.add('opacity-75', 'pointer-events-none');
+            
+            fetch('/api/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    text: text,
+                    style_dir: style,
+                    variation: parseInt(variation),
+                    density: parseInt(density)
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.images) {
+                    // Clear previous output
+                    outputText.innerHTML = '';
+                    outputText.style.display = 'flex';
+                    outputText.style.flexWrap = 'wrap';
+                    outputText.style.gap = '8px'; // Adjust gap between chars
+                    outputText.style.alignContent = 'flex-start';
+                    outputText.style.alignItems = 'center'; // Fix vertical alignment
+                    
+                    data.images.forEach(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        // Backend now returns White Ink on Transparent Background.
+                        // Dark Mode: Show as is (White Ink).
+                        // Light Mode: Invert (to make it Black Ink).
+                        img.className = "h-16 w-16 object-contain filter invert dark:filter-none"; 
+                        
+                        outputText.appendChild(img);
+                    });
+                } else {
+                    alert('Generation failed: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error during synthesis');
+            })
+            .finally(() => {
+                runBtn.innerHTML = originalText;
+                runBtn.classList.remove('opacity-75', 'pointer-events-none');
+            });
+        });
+
+        // Sliders
+        const rangeVariation = document.getElementById('range-variation');
+        const valVariation = document.getElementById('val-variation');
+        rangeVariation.addEventListener('input', (e) => {
+            valVariation.textContent = (e.target.value / 100).toFixed(2);
+            // Simulate effect
+            outputText.style.letterSpacing = `${(e.target.value - 50) / 20}px`;
+        });
+
+        const rangeDensity = document.getElementById('range-density');
+        const valDensity = document.getElementById('val-density');
+        rangeDensity.addEventListener('input', (e) => {
+            valDensity.textContent = (e.target.value / 100).toFixed(2);
+            // Simulate effect
+            outputText.style.opacity = e.target.value / 100;
+        });
+
+        // Zoom Logic
+        let currentZoom = 1;
+        const paperSheet = document.getElementById('paper-sheet');
+        
+        function zoom(delta) {
+            currentZoom += delta;
+            currentZoom = Math.max(0.5, Math.min(2, currentZoom));
+            paperSheet.style.transform = `scale(${currentZoom})`;
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            paperSheet.style.transform = `scale(1)`;
+        }
+
+        // Style Management
+        const styleSelect = document.getElementById('style-select');
+        const styleModal = document.getElementById('style-modal');
+        const styleModalContent = document.getElementById('style-modal-content');
+        const styleList = document.getElementById('style-list');
+        let availableStyles = [];
+
+        function loadStyles() {
+            fetch('/api/styles')
+                .then(res => res.json())
+                .then(data => {
+                    availableStyles = data;
+                    renderStyleSelect();
+                    renderStyleList();
+                })
+                .catch(err => {
+                    console.error("Failed to load styles:", err);
+                    styleSelect.innerHTML = '<option>Error loading styles</option>';
+                });
+        }
+
+        function renderStyleSelect() {
+            styleSelect.innerHTML = '';
+            
+            // Check if no styles available
+            if (availableStyles.length === 0) {
+                styleSelect.innerHTML = '<option value="">No styles found</option>';
+                // Zero State: Disable Generate
+                runBtn.disabled = true;
+                runBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                runBtn.innerHTML = `
+                    <span class="material-symbols-outlined">info</span>
+                    NO STYLES AVAILABLE
+                `;
+                runBtn.title = "Please clone a handwriting style first.";
+                return;
+            }
+            
+            // Restore button state if styles exist
+            runBtn.disabled = false;
+            runBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+            runBtn.innerHTML = `
+                <span class="material-symbols-outlined">analytics</span>
+                RUN SYNTHESIS ENGINE
+            `;
+            runBtn.title = "";
+
+            availableStyles.forEach(style => {
+                const opt = document.createElement('option');
+                opt.value = style.dir_name;
+                opt.textContent = style.font_name;
+                styleSelect.appendChild(opt);
+            });
+        }
+
+        function openStyleManager() {
+            styleModal.classList.remove('pointer-events-none', 'opacity-0');
+            styleModalContent.classList.remove('scale-95');
+            renderStyleList();
+        }
+
+        function closeStyleManager() {
+            styleModal.classList.add('pointer-events-none', 'opacity-0');
+            styleModalContent.classList.add('scale-95');
+        }
+
+        function renderStyleList() {
+            styleList.innerHTML = '';
+            if (availableStyles.length === 0) {
+                styleList.innerHTML = '<div class="text-center text-lab-muted py-8">No styles saved yet.</div>';
+                return;
+            }
+
+            availableStyles.forEach(style => {
+                const div = document.createElement('div');
+                div.className = "bg-lab-bg border border-lab-border rounded-lg p-4 flex items-center justify-between group hover:border-lab-blue/50 transition-colors";
+                
+                const date = new Date(style.created_at * 1000).toLocaleDateString();
+                
+                div.innerHTML = `
+                    <div>
+                        <div class="font-bold text-white text-sm">${style.font_name}</div>
+                        <div class="text-[10px] text-lab-muted font-mono mt-1">CREATED: ${date}</div>
+                    </div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="deleteStyle('${style.dir_name}')" class="p-2 hover:bg-red-500/20 hover:text-red-500 rounded text-lab-muted transition-colors" title="Delete">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                    </div>
+                `;
+                styleList.appendChild(div);
+            });
+        }
+
+        function deleteStyle(dirName) {
+            if (!confirm('Are you sure you want to delete this font style? This action cannot be undone.')) return;
+            
+            fetch('/api/delete_style', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: dirName })
+            })
+            .then(res => {
+                if (res.ok) {
+                    loadStyles(); // Reload
+                } else {
+                    alert('Failed to delete style');
+                }
+            });
+        }
+
+        // Initial Load
+        loadStyles();
+
+        // Export Functions
+        async function exportPNG() {
+            const container = document.getElementById('output-text');
+            const images = container.querySelectorAll('img');
+            if (images.length === 0) return alert("No content to export");
+            
+            // Determine bounds
+            const containerRect = container.getBoundingClientRect();
+            // Use container scrollWidth/Height to capture all content
+            const width = container.scrollWidth;
+            const height = container.scrollHeight;
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            
+            // Invert filter for black ink
+            ctx.filter = 'invert(1)';
+            
+            for (let img of images) {
+                // Ensure image is loaded
+                if (!img.complete) continue;
+                
+                // Get relative position including scroll
+                // We use offsetLeft/Top which is relative to offsetParent (container)
+                const x = img.offsetLeft;
+                const y = img.offsetTop;
+                const w = img.offsetWidth;
+                const h = img.offsetHeight;
+                
+                ctx.drawImage(img, x, y, w, h);
+            }
+            ctx.filter = 'none';
+            
+            const link = document.createElement('a');
+            link.download = `mohen_export_${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        async function exportSVG() {
+            // Check if library is loaded
+            if (typeof ImageTracer === 'undefined') {
+                alert("Vector engine (ImageTracer) not loaded. Please check your internet connection.");
+                return;
+            }
+
+            const container = document.getElementById('output-text');
+            const images = container.querySelectorAll('img');
+            if (images.length === 0) return alert("No content to export");
+            
+            const width = container.scrollWidth;
+            const height = container.scrollHeight;
+            
+            let svgBody = '';
+            
+            // Trace Helper
+            const traceImage = (img) => {
+                return new Promise(resolve => {
+                    const c = document.createElement('canvas');
+                    c.width = img.naturalWidth;
+                    c.height = img.naturalHeight;
+                    const cx = c.getContext('2d');
+                    
+                    // Draw inverted (White -> Black) for better tracing of "ink"
+                    cx.filter = 'invert(1)';
+                    cx.drawImage(img, 0, 0);
+                    cx.filter = 'none';
+                    
+                    const imageData = cx.getImageData(0,0, c.width, c.height);
+                    
+                    // Tracer options for clean single-color output
+                    const options = { 
+                        ltres: 1, 
+                        qtres: 1, 
+                        pathomit: 8, 
+                        colorsampling: 0, // Deterministic
+                        numberofcolors: 2, 
+                        mincolorratio: 0, 
+                        colorquantcycles: 0, 
+                        strokewidth: 0, 
+                        linefilter: true,
+                        scale: 1,
+                        viewbox: false // We handle viewbox
+                    };
+                    
+                    // We need to capture the output string. 
+                    // ImageTracer.imagedataToSVG returns string.
+                    try {
+                        const svgStr = ImageTracer.imagedataToSVG(imageData, options);
+                        resolve(svgStr);
+                    } catch (e) {
+                        console.error(e);
+                        resolve('');
+                    }
+                });
+            };
+
+            for (let img of images) {
+                if (!img.complete) continue;
+                
+                const x = img.offsetLeft;
+                const y = img.offsetTop;
+                const w = img.offsetWidth;
+                const h = img.offsetHeight;
+                
+                // Scale from natural size to display size
+                const scaleX = w / img.naturalWidth;
+                const scaleY = h / img.naturalHeight;
+                
+                const rawSvg = await traceImage(img);
+                if (!rawSvg) continue;
+                
+                // Extract path data. ImageTracer produces <svg ...><path ...></svg>
+                // We want to extract <path d="..." ... /> and strip fill/stroke to override them
+                // Or just take the content.
+                // Simple parser: find first <path and last />
+                
+                // Better: Parse XML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(rawSvg, "image/svg+xml");
+                const paths = doc.querySelectorAll('path');
+                
+                let groupContent = '';
+                paths.forEach(p => {
+                    // Force fill black
+                    p.setAttribute('fill', '#000000');
+                    p.removeAttribute('stroke');
+                    groupContent += p.outerHTML;
+                });
+                
+                svgBody += `<g transform="translate(${x},${y}) scale(${scaleX}, ${scaleY})">${groupContent}</g>`;
+            }
+            
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${svgBody}</svg>`;
+            
+            const blob = new Blob([svg], {type: "image/svg+xml"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `mohen_vector_${Date.now()}.svg`;
+            link.href = url;
+            link.click();
+        }
+    </script>
+</body>
+</html>

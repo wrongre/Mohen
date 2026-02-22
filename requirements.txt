@@ -1,0 +1,18 @@
+torch>=2.0.0
+torchvision
+accelerate>=0.25.0
+
+# --- 生成式 AI 核心 (对应你提到的 Diffusers 升级) ---
+diffusers>=0.26.0
+transformers
+safetensors
+
+# --- 图像处理与字符分割 (支撑 Step 02 的 30 个字符提取) ---
+Pillow
+opencv-python
+numpy
+
+# --- 系统监控与日志解析 (支撑底部状态栏与进度条) ---
+psutil
+tqdm
+python-dotenv
