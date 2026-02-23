@@ -169,10 +169,16 @@
                             <span class="material-symbols-outlined text-sm">terminal</span>
                             System Details
                         </div>
-                        <!-- Status Indicator -->
-                        <div class="flex items-center gap-2">
-                             <div id="status-dot" class="w-2 h-2 rounded-full bg-lab-muted"></div>
-                             <span id="status-label" class="text-[10px] font-mono text-lab-muted uppercase">IDLE</span>
+                        <!-- Status Indicator & Back Button -->
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                 <div id="status-dot" class="w-2 h-2 rounded-full bg-lab-muted"></div>
+                                 <span id="status-label" class="text-[10px] font-mono text-lab-muted uppercase">IDLE</span>
+                            </div>
+                            <!-- Back to Save Button (Shown after training completes) -->
+                            <button id="back-to-save-btn" onclick="document.getElementById('completion-card').classList.remove('hidden')" class="hidden text-xs px-3 py-1 bg-lab-blue/20 hover:bg-lab-blue/30 border border-lab-blue/50 hover:border-lab-blue text-lab-blue rounded transition-colors font-semibold">
+                                Back to Save
+                            </button>
                         </div>
                     </div>
                     <!-- Terminal Content with forced high contrast -->
@@ -192,7 +198,7 @@
                 <div id="completion-card" class="hidden absolute inset-0 bg-lab-dark/90 backdrop-blur-sm flex items-center justify-center z-50">
                     <div class="bg-lab-gray border border-lab-light-gray p-8 rounded-lg shadow-2xl max-w-md w-full text-center relative">
                         <!-- Close/Hide Log Button -->
-                        <button onclick="document.getElementById('completion-card').classList.add('hidden')" class="absolute top-2 right-2 text-lab-muted hover:text-white">
+                        <button onclick="document.getElementById('completion-card').classList.add('hidden'); document.getElementById('back-to-save-btn').classList.remove('hidden');" class="absolute top-2 right-2 text-lab-muted hover:text-white">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                         
@@ -219,7 +225,7 @@
                             </div>
                             
                             <div class="pt-4 border-t border-lab-light-gray/30">
-                                <button onclick="document.getElementById('completion-card').classList.add('hidden')" class="text-xs text-lab-muted hover:text-white underline">
+                                <button onclick="document.getElementById('completion-card').classList.add('hidden'); document.getElementById('back-to-save-btn').classList.remove('hidden');" class="text-xs text-lab-muted hover:text-white underline">
                                     View Training Logs
                                 </button>
                             </div>
