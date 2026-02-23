@@ -1,56 +1,49 @@
 # AI Context & Progress Log
 
 > **Purpose**: This file maintains the continuity of the development context. Please read this first when starting a new session.
-> **Last Updated**: 2026-02-21 21:00 CST
+> **Last Updated**: 2026-02-22 23:59 CST
 
-## 🚀 Project Status: Local Deployment Ready & Stable
-We have successfully solidified the application for local use. The entire pipeline (Upload -> Slice -> Train -> Generate) is functional, stable, and user-friendly. We have addressed critical dependency issues and provided one-click launcher scripts.
+## 🚀 Project Status: GitHub Migration Initialized
+We have successfully initialized the Git repository, cleaned up the project structure, and prepared it for GitHub hosting. The local environment is clean and ready for further development.
 
 ### ✅ Key Achievements (Recent Session)
-1.  **One-Click Launcher**: Created `start_app.bat` that:
-    *   Auto-detects and activates `.venv`.
-    *   Auto-installs missing dependencies (e.g., `torchvision`).
-    *   Launches the server in the background and opens the browser automatically.
-    *   Displays real-time server logs in the terminal.
-2.  **One-Click Shutdown**: Created `stop_app.bat` to cleanly kill the process listening on port 8000.
-3.  **Dependency Hell Solved**:
-    *   Fixed `ImportError: cannot import name 'cached_download'` by upgrading `diffusers` to `0.36.0`.
-    *   Ensured `torchvision` is installed via the startup script logic.
-4.  **UI Overhaul (Step 3)**:
-    *   Refactored Training UI to a high-contrast "Hacker/Dark" theme.
-    *   Fixed Status Sync: "TRAINING" state now displays correctly (no longer stuck on "INITIALIZING").
-    *   Fixed Log Display: Real-time logs are visible and readable.
-5.  **Data Integrity**:
-    *   Implemented **Strict Style Bundling**: Saved styles now permanently include their reference images.
-    *   Fixed "No style reference images found" error by ensuring generation pulls strictly from the style folder, not the volatile `processed` directory.
+1.  **Git Initialization & Cleanup**:
+    *   Removed old `.git` history to start fresh.
+    *   Deleted temporary scripts (`check_*.py`, `debug_*.py`, etc.) and user data (`data_examples/upload/`, `processed/`).
+    *   Configured `.gitignore` to properly exclude large files, logs, and virtual environments while keeping necessary static assets.
+    *   Initialized repository and created the **Initial Commit**.
+2.  **Remote Configuration**:
+    *   Added remote origin: `https://github.com/wrongre/Mohen`.
+    *   Renamed branch to `main`.
+    *   **Action Required**: `git push -u origin main --force` (pending user authentication).
+3.  **Documentation Integration**:
+    *   Merged `README.md`, `requirements.txt`, and `.gitignore` from the `doc/` folder into the root.
+    *   Updated `requirements.txt` with current dependencies.
+4.  **UI Updates**:
+    *   Replaced the placeholder icon with `mohen.svg` in all HTML templates (`step1.html` to `generate.html`).
+    *   **Known Issue**: The current `mohen.svg` has hardcoded dark colors and is invisible in the dark theme. User will provide a fixed SVG later.
 
 ### 🚧 Current Issues & Backlog
 
-#### 1. Immediate UI/Logic Tweaks (Post-Migration)
-*   **Variation Slider**: User suspects the slider isn't producing visible changes. Needs code verification in `main.py` / `src/pipeline`.
-*   **Step 3 Navigation**: After clicking "View Logs" on the completion card, there is no way to get back to the "Save Style" dialog without refreshing/re-training.
+#### 1. Immediate Tasks (Next Session)
+*   **Logo Replacement**: User to provide a new, style-compliant `mohen.svg`.
+*   **GitHub Push**: Execute the final push command to sync local code to GitHub.
+*   **Variation Slider**: Verify if the slider logic in `main.py` is actually affecting the output.
+*   **UI Flow**: Add a "Back" button in Step 3 to allow saving the style after viewing logs.
 
 #### 2. Core Quality (Technical Debt)
-*   **Background & Grid Artifacts**: Generated characters still sometimes have dark backgrounds or grid lines.
-    *   *Solution*: Implement **Adaptive Thresholding** in `utils_slice.py` to purify input data.
-*   **Alignment & Punctuation**: Punctuation is vertically centered (wrong for Chinese).
-    *   *Solution*: Rewrite `utils.ttf2im` to use font metrics (baseline/descent) instead of simple centering.
+*   **Background & Grid Artifacts**: Implement **Adaptive Thresholding** in `utils_slice.py`.
+*   **Alignment**: Improve `ttf2im` centering logic using font metrics.
 
-## 📋 Next Session Plan (Migration & Polish)
+## 📋 Next Session Plan
 
-**Priority 1: GitHub Migration**
-*   Initialize Git repository.
-*   Create `.gitignore` (exclude `.venv`, `outputs/`, `data_examples/upload`, etc.).
-*   Commit code and push to remote.
+**Priority 1: Finalize Migration**
+*   Replace `web_ui/static/mohen.svg` with the new version.
+*   Push code to GitHub.
 
-**Priority 2: Minor Logic Fixes**
-*   Investigate and fix the Variation Slider logic.
-*   Add a "Back to Save" button in the Step 3 Log view.
-
-**Priority 3: Quality Optimization (Future)**
-*   Implement Adaptive Thresholding for Step 2.
+**Priority 2: Functional Polish**
+*   Fix Variation Slider & Step 3 Navigation.
 
 ## 🛠 Command Reference
 *   **Start App**: Double-click `start_app.bat`
-*   **Stop App**: Double-click `stop_app.bat`
-*   **Manual Start**: `.venv\Scripts\python.exe web_ui/main.py`
+*   **Git Push**: `git push -u origin main --force`
