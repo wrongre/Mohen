@@ -142,6 +142,10 @@
                     <span class="material-symbols-outlined">analytics</span>
                     RUN SYNTHESIS ENGINE
                 </button>
+                <button id="compare-btn" class="w-full bg-lab-blue/90 hover:bg-lab-blue text-white font-bold py-3 rounded-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
+                    <span class="material-symbols-outlined">compare</span>
+                    A/B COMPARE (V0.20 vs V0.80)
+                </button>
             </div>
         </section>
 
@@ -179,7 +183,7 @@
                                 <span>Dynamic Variation</span>
                                 <span class="text-lab-blue" id="val-variation">0.64</span>
                             </div>
-                            <input id="range-variation" class="w-full" type="range" min="0" max="100" value="64">
+                            <input id="range-variation" class="w-full" type="range" min="0" max="1" step="0.01" value="0.64">
                         </div>
                         <div class="space-y-3">
                             <div class="flex justify-between text-[10px] font-mono uppercase text-white">
@@ -263,13 +267,111 @@
         const charCount = document.getElementById('char-count');
         const outputText = document.getElementById('output-text');
         const runBtn = document.getElementById('run-btn');
+        const compareBtn = document.getElementById('compare-btn');
 
         textInput.addEventListener('input', () => {
             charCount.textContent = textInput.value.length;
         });
 
-        // Run Synthesis
-        runBtn.addEventListener('click', () => {
+        function ensureOutputContainerReady() {
+            outputText.style.display = 'flex';
+            outputText.style.flexWrap = 'wrap';
+            outputText.style.gap = '8px';
+            outputText.style.alignContent = 'flex-start';
+            outputText.style.alignItems = 'center';
+            outputText.style.gridTemplateColumns = '';
+        }
+
+        function appendGeneratedImages(urls, target = outputText) {
+            urls.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = "h-16 w-16 object-contain filter invert dark:filter-none";
+                target.appendChild(img);
+            });
+        }
+
+        function createCompareLayout(leftLabel, rightLabel) {
+            outputText.innerHTML = '';
+            outputText.style.display = 'grid';
+            outputText.style.gridTemplateColumns = '1fr 1fr';
+            outputText.style.gap = '16px';
+            outputText.style.alignItems = 'start';
+            outputText.style.alignContent = 'start';
+
+            const createPanel = (label) => {
+                const panel = document.createElement('div');
+                panel.className = 'border border-lab-border rounded-lg bg-black/10 p-3 min-h-[220px]';
+
+                const title = document.createElement('div');
+                title.className = 'text-[10px] font-mono uppercase tracking-widest text-lab-blue mb-3';
+                title.textContent = label;
+
+                const imagesWrap = document.createElement('div');
+                imagesWrap.className = 'flex flex-wrap gap-2 items-center content-start';
+
+                panel.appendChild(title);
+                panel.appendChild(imagesWrap);
+                outputText.appendChild(panel);
+                return imagesWrap;
+            };
+
+            return {
+                leftContainer: createPanel(leftLabel),
+                rightContainer: createPanel(rightLabel)
+            };
+        }
+
+        function splitTextIntoChunks(text, chunkSize) {
+            const chars = Array.from(text);
+            const chunks = [];
+            for (let i = 0; i < chars.length; i += chunkSize) {
+                chunks.push(chars.slice(i, i + chunkSize).join(''));
+            }
+            return chunks;
+        }
+
+        function setButtonsBusy(isBusy) {
+            if (isBusy) {
+                runBtn.classList.add('opacity-75', 'pointer-events-none');
+                compareBtn.classList.add('opacity-75', 'pointer-events-none');
+            } else {
+                runBtn.classList.remove('opacity-75', 'pointer-events-none');
+                compareBtn.classList.remove('opacity-75', 'pointer-events-none');
+            }
+        }
+
+        async function generateChunks({ chunks, style, variation, density, onProgress, onChunkDone }) {
+            for (let i = 0; i < chunks.length; i++) {
+                if (onProgress) {
+                    onProgress(i, chunks.length);
+                }
+
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        text: chunks[i],
+                        style_dir: style,
+                            variation: parseFloat(variation),
+                        density: parseInt(density),
+                        chunk_index: i
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok || !data.images) {
+                    throw new Error(data.message || 'Unknown error');
+                }
+
+                if (onChunkDone) {
+                    onChunkDone(data.images);
+                }
+            }
+        }
+
+        // Run Synthesis (Progressive)
+        runBtn.addEventListener('click', async () => {
             const text = textInput.value;
             const style = styleSelect.value;
             const variation = rangeVariation.value;
@@ -285,61 +387,116 @@
             }
             
             const originalText = runBtn.innerHTML;
-            runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING NEURAL OUTPUT...`;
-            runBtn.classList.add('opacity-75', 'pointer-events-none');
-            
-            fetch('/api/generate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    text: text,
-                    style_dir: style,
-                    variation: parseInt(variation),
-                    density: parseInt(density)
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.images) {
-                    // Clear previous output
-                    outputText.innerHTML = '';
-                    outputText.style.display = 'flex';
-                    outputText.style.flexWrap = 'wrap';
-                    outputText.style.gap = '8px'; // Adjust gap between chars
-                    outputText.style.alignContent = 'flex-start';
-                    outputText.style.alignItems = 'center'; // Fix vertical alignment
-                    
-                    data.images.forEach(url => {
-                        const img = document.createElement('img');
-                        img.src = url;
-                        // Backend now returns White Ink on Transparent Background.
-                        // Dark Mode: Show as is (White Ink).
-                        // Light Mode: Invert (to make it Black Ink).
-                        img.className = "h-16 w-16 object-contain filter invert dark:filter-none"; 
-                        
-                        outputText.appendChild(img);
-                    });
-                } else {
-                    alert('Generation failed: ' + (data.message || 'Unknown error'));
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Network error during synthesis');
-            })
-            .finally(() => {
+            runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING 0%...`;
+            setButtonsBusy(true);
+
+            outputText.innerHTML = '';
+            ensureOutputContainerReady();
+
+            const chunkSize = 6;
+            const chunks = splitTextIntoChunks(text, chunkSize).filter(chunk => chunk.trim().length > 0);
+
+            if (chunks.length === 0) {
+                alert('Please enter visible characters.');
                 runBtn.innerHTML = originalText;
                 runBtn.classList.remove('opacity-75', 'pointer-events-none');
-            });
+                return;
+            }
+            
+            try {
+                await generateChunks({
+                    chunks,
+                    style,
+                    variation,
+                    density,
+                    onProgress: (index, total) => {
+                        const progress = Math.round((index / total) * 100);
+                        runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING ${progress}% (${index + 1}/${total})`;
+                    },
+                    onChunkDone: (images) => appendGeneratedImages(images)
+                });
+
+                runBtn.innerHTML = `<span class="material-symbols-outlined">check_circle</span> SYNTHESIS COMPLETE`;
+            } catch (err) {
+                console.error(err);
+                alert('Generation failed: ' + (err.message || 'Network error during synthesis'));
+            } finally {
+                runBtn.innerHTML = originalText;
+                setButtonsBusy(false);
+            }
+        });
+
+        compareBtn.addEventListener('click', async () => {
+            const text = textInput.value;
+            const style = styleSelect.value;
+            const density = rangeDensity.value;
+            const variationA = 0.20;
+            const variationB = 0.80;
+
+            if (!style) {
+                alert('Please select a font style first.');
+                return;
+            }
+            if (!text.trim()) {
+                alert('Please enter some text.');
+                return;
+            }
+
+            const originalCompareText = compareBtn.innerHTML;
+            compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING 0%...`;
+            setButtonsBusy(true);
+
+            const chunkSize = 6;
+            const chunks = splitTextIntoChunks(text, chunkSize).filter(chunk => chunk.trim().length > 0);
+            if (chunks.length === 0) {
+                alert('Please enter visible characters.');
+                compareBtn.innerHTML = originalCompareText;
+                setButtonsBusy(false);
+                return;
+            }
+
+            const { leftContainer, rightContainer } = createCompareLayout(`A: Variation ${variationA.toFixed(2)}`, `B: Variation ${variationB.toFixed(2)}`);
+
+            try {
+                await generateChunks({
+                    chunks,
+                    style,
+                    variation: variationA,
+                    density,
+                    onProgress: (index, total) => {
+                        const overall = Math.round((index / (total * 2)) * 100);
+                        compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING ${overall}% (A ${index + 1}/${total})`;
+                    },
+                    onChunkDone: (images) => appendGeneratedImages(images, leftContainer)
+                });
+
+                await generateChunks({
+                    chunks,
+                    style,
+                    variation: variationB,
+                    density,
+                    onProgress: (index, total) => {
+                        const overall = Math.round(((total + index) / (total * 2)) * 100);
+                        compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING ${overall}% (B ${index + 1}/${total})`;
+                    },
+                    onChunkDone: (images) => appendGeneratedImages(images, rightContainer)
+                });
+
+                compareBtn.innerHTML = `<span class="material-symbols-outlined">check_circle</span> A/B READY`;
+            } catch (err) {
+                console.error(err);
+                alert('A/B compare failed: ' + (err.message || 'Network error during synthesis'));
+            } finally {
+                compareBtn.innerHTML = originalCompareText;
+                setButtonsBusy(false);
+            }
         });
 
         // Sliders
         const rangeVariation = document.getElementById('range-variation');
         const valVariation = document.getElementById('val-variation');
         rangeVariation.addEventListener('input', (e) => {
-            valVariation.textContent = (e.target.value / 100).toFixed(2);
-            // Simulate effect
-            outputText.style.letterSpacing = `${(e.target.value - 50) / 20}px`;
+            valVariation.textContent = Number(e.target.value).toFixed(2);
         });
 
         const rangeDensity = document.getElementById('range-density');
@@ -394,23 +551,29 @@
                 styleSelect.innerHTML = '<option value="">No styles found</option>';
                 // Zero State: Disable Generate
                 runBtn.disabled = true;
+                compareBtn.disabled = true;
                 runBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                compareBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
                 runBtn.innerHTML = `
                     <span class="material-symbols-outlined">info</span>
                     NO STYLES AVAILABLE
                 `;
                 runBtn.title = "Please clone a handwriting style first.";
+                compareBtn.title = "Please clone a handwriting style first.";
                 return;
             }
             
             // Restore button state if styles exist
             runBtn.disabled = false;
+            compareBtn.disabled = false;
             runBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+            compareBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
             runBtn.innerHTML = `
                 <span class="material-symbols-outlined">analytics</span>
                 RUN SYNTHESIS ENGINE
             `;
             runBtn.title = "";
+            compareBtn.title = "";
 
             availableStyles.forEach(style => {
                 const opt = document.createElement('option');

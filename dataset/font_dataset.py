@@ -36,9 +36,13 @@ class FontDataset(Dataset):
         self.style_to_images = {}
         target_image_dir = f"{self.root}/{self.phase}/TargetImage"
         for style in os.listdir(target_image_dir):
+            style_path = f"{target_image_dir}/{style}"
+            # Skip files (like .gitkeep) and only process directories
+            if not os.path.isdir(style_path):
+                continue
             images_related_style = []
-            for img in os.listdir(f"{target_image_dir}/{style}"):
-                img_path = f"{target_image_dir}/{style}/{img}"
+            for img in os.listdir(style_path):
+                img_path = f"{style_path}/{img}"
                 self.target_images.append(img_path)
                 images_related_style.append(img_path)
             self.style_to_images[style] = images_related_style

@@ -297,8 +297,9 @@ MODEL_CACHE = {}
 class GenerateRequest(BaseModel):
     text: str
     style_dir: str
-    variation: int = 50
+    variation: float = 0.5
     density: int = 50
+    chunk_index: int = 0
 
 def get_latest_ckpt(base_dir):
     if not os.path.exists(base_dir):
@@ -422,6 +423,7 @@ async def generate_text(request: GenerateRequest):
     try:
         pipe = load_model(request.style_dir)
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        import uuid
         
         # Prepare content font
         ttf_path = "web_ui/static/fonts/AlibabaPuHuiTi-3-55-Regular.ttf"
@@ -492,20 +494,22 @@ async def generate_text(request: GenerateRequest):
         style_image_pil = style_image_pil.crop((crop_margin, crop_margin, w - crop_margin, h - crop_margin))
         style_image_pil = style_image_pil.resize((96, 96), Image.BICUBIC)
 
-        # Apply Variation Seed
-        if request.variation:
-             # Map variation (0-100) to a seed range
-             seed = 42 + request.variation * 100
-             torch.manual_seed(seed)
-             if torch.cuda.is_available():
-                 torch.cuda.manual_seed(seed)
-             
-             # Also slightly vary guidance_scale for more "dynamic" feel
-             # Base is 9.0. Variation 0-100 maps to +/- 1.5
-             # 50 is neutral (9.0). 0 -> 7.5, 100 -> 10.5
-             pipe.guidance_scale = 7.5 + (request.variation / 100.0) * 3.0
-        else:
-             pipe.guidance_scale = 9.0
+        # Variation Mapping (Strong Perceptual Separation)
+        variation_ratio = max(0.0, min(1.0, float(request.variation or 0.0)))
+        variation_seed_bucket = int(variation_ratio * 1000)
+
+        # Base seed includes chunk index so progressive generation doesn't repeat too similarly.
+        base_seed = 1337 + (request.chunk_index * 100003) + (variation_seed_bucket * 97)
+        torch.manual_seed(base_seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(base_seed)
+
+        # Wider range than before to create stronger visible differences.
+        pipe.guidance_scale = 6.0 + (variation_ratio * 7.0)
+        num_inference_step = 14 + int(variation_ratio * 14)
+
+        # Style perturbation strength for visible but controlled diversity.
+        style_noise_strength = 0.01 + (variation_ratio * 0.08)
         
         # Transforms
         content_transform = transforms.Compose([
@@ -519,7 +523,7 @@ async def generate_text(request: GenerateRequest):
             transforms.Normalize([0.5], [0.5])
         ])
         
-        style_tensor = style_transform(style_image_pil).unsqueeze(0).to(device)
+        style_tensor_base = style_transform(style_image_pil).unsqueeze(0).to(device)
         
         generated_images = []
         
@@ -527,7 +531,7 @@ async def generate_text(request: GenerateRequest):
         # Limit length for demo performance
         text = request.text[:20] 
         
-        for char in text:
+        for char_idx, char in enumerate(text):
             if not char.strip():
                 continue
                 
@@ -539,6 +543,23 @@ async def generate_text(request: GenerateRequest):
                     continue
             except:
                 continue
+
+            # Character-level deterministic seed for stronger, controllable variation.
+            char_seed = base_seed + ((char_idx + 1) * 7919) + ord(char[0])
+            torch.manual_seed(char_seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed(char_seed)
+
+            # Light geometric jitter on content glyph, grows with variation.
+            if variation_ratio > 0:
+                max_angle = 1.0 + variation_ratio * 7.0
+                angle = (random.random() - 0.5) * 2.0 * max_angle
+                content_pil = content_pil.rotate(angle, resample=Image.BICUBIC, fillcolor=255)
+
+            style_tensor = style_tensor_base
+            if variation_ratio > 0:
+                style_noise = torch.randn_like(style_tensor_base) * style_noise_strength
+                style_tensor = torch.clamp(style_tensor_base + style_noise, -1.0, 1.0)
                 
             content_tensor = content_transform(content_pil).unsqueeze(0).to(device)
             
@@ -549,7 +570,7 @@ async def generate_text(request: GenerateRequest):
                     style_images=style_tensor,
                     batch_size=1,
                     order=2,
-                    num_inference_step=20, # Fast steps
+                    num_inference_step=num_inference_step,
                     content_encoder_downsample_size=3,
                     t_start=None,
                     t_end=None,
@@ -566,9 +587,9 @@ async def generate_text(request: GenerateRequest):
         gen_dir = "web_ui/static/generated"
         os.makedirs(gen_dir, exist_ok=True)
         
-        timestamp = int(time.time())
+        timestamp_ms = int(time.time() * 1000)
         for i, img in enumerate(generated_images):
-            filename = f"gen_{timestamp}_{i}.png"
+            filename = f"gen_{timestamp_ms}_{request.chunk_index}_{i}_{uuid.uuid4().hex[:8]}.png"
             path = os.path.join(gen_dir, filename)
             
             # Post-processing: Convert to Transparent Ink

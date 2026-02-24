@@ -26,10 +26,35 @@ if %errorlevel% neq 0 (
 echo [INFO] Starting WebUI Server...
 start /b "" "%PYTHON_EXE%" -u web_ui/main.py > server.log 2>&1
 
-:: Wait a few seconds for the server to spin up
-echo [INFO] Waiting for server to initialize (5 seconds)...
-timeout /t 5 /nobreak >nul
+:: Wait for server to be ready with intelligent retry logic
+echo [INFO] Waiting for server to initialize...
+set "MAX_RETRIES=60"
+set "RETRY_COUNT=0"
+set "SERVER_READY=0"
 
+:wait_server
+if %RETRY_COUNT% geq %MAX_RETRIES% (
+    echo [WARNING] Server did not respond after %MAX_RETRIES% attempts. Opening browser anyway...
+    set "SERVER_READY=1"
+    goto open_browser
+)
+
+:: Use curl or powershell to check if server is responding
+powershell -Command "try { $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8000' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+
+if %errorlevel% equ 0 (
+    echo [INFO] Server is ready!
+    set "SERVER_READY=1"
+    timeout /t 1 /nobreak >nul
+    goto open_browser
+)
+
+set /a RETRY_COUNT=%RETRY_COUNT%+1
+echo [INFO] Server not ready yet... Retry %RETRY_COUNT%/%MAX_RETRIES%
+timeout /t 1 /nobreak >nul
+goto wait_server
+
+:open_browser
 :: Open Browser
 echo [INFO] Opening Browser...
 start http://127.0.0.1:8000
