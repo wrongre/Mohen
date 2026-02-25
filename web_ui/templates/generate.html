@@ -137,6 +137,38 @@
                     </div>
                 </div>
 
+                <div class="space-y-3">
+                    <div class="flex justify-between items-end">
+                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Inference Preset</label>
+                    </div>
+                    <div class="relative">
+                        <select id="preset-select" class="w-full bg-lab-bg border border-lab-border rounded-lg px-4 py-3 text-sm font-mono text-white appearance-none focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none cursor-pointer">
+                            <option value="fidelity">Fidelity (文字保真)</option>
+                            <option value="balanced" selected>Balanced (平衡)</option>
+                            <option value="style">Style (风格优先)</option>
+                        </select>
+                        <div class="absolute right-3 top-3 pointer-events-none text-lab-muted">
+                            <span class="material-symbols-outlined text-sm">tune</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-end">
+                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Preset Version</label>
+                    </div>
+                    <div class="relative">
+                        <select id="preset-version-select" class="w-full bg-lab-bg border border-lab-border rounded-lg px-4 py-3 text-sm font-mono text-white appearance-none focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none cursor-pointer">
+                            <option value="v1" selected>v1 (Current baseline)</option>
+                            <option value="v2">v2 (Aggressive separation)</option>
+                            <option value="v3">v3 (Complexity-aware)</option>
+                        </select>
+                        <div class="absolute right-3 top-3 pointer-events-none text-lab-muted">
+                            <span class="material-symbols-outlined text-sm">experiment</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Run Button (Moved up) -->
                 <button id="run-btn" class="w-full bg-lab-green hover:bg-[#d9ff33] text-black font-bold py-4 rounded-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-lab-green/5">
                     <span class="material-symbols-outlined">analytics</span>
@@ -146,6 +178,29 @@
                     <span class="material-symbols-outlined">compare</span>
                     A/B COMPARE (V0.20 vs V0.80)
                 </button>
+
+                <div class="border border-lab-border rounded-lg bg-lab-bg/70 p-4 space-y-3">
+                    <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-lab-muted">
+                        <span>Quality Metrics</span>
+                        <span id="quality-method" class="text-lab-blue">Waiting</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                            <div class="text-[9px] text-lab-muted uppercase tracking-wider">CER est.</div>
+                            <div id="metric-cer" class="text-sm font-bold text-white">--</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] text-lab-muted uppercase tracking-wider">Accuracy</div>
+                            <div id="metric-acc" class="text-sm font-bold text-white">--</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] text-lab-muted uppercase tracking-wider">Errors</div>
+                            <div id="metric-err" class="text-sm font-bold text-white">--</div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-lab-muted" id="metric-meta">Run synthesis to compute estimated typo rate.</div>
+                    <div class="text-[10px] text-red-300/80 max-h-20 overflow-y-auto custom-scrollbar" id="metric-mismatch"></div>
+                </div>
             </div>
         </section>
 
@@ -268,10 +323,105 @@
         const outputText = document.getElementById('output-text');
         const runBtn = document.getElementById('run-btn');
         const compareBtn = document.getElementById('compare-btn');
+        const presetSelect = document.getElementById('preset-select');
+        const presetVersionSelect = document.getElementById('preset-version-select');
+        const metricCer = document.getElementById('metric-cer');
+        const metricAcc = document.getElementById('metric-acc');
+        const metricErr = document.getElementById('metric-err');
+        const metricMeta = document.getElementById('metric-meta');
+        const metricMismatch = document.getElementById('metric-mismatch');
+        const metricMethod = document.getElementById('quality-method');
+
+        const qualitySummary = {
+            evaluated: 0,
+            errors: 0,
+            confidenceWeightedSum: 0,
+            mismatches: [],
+            preset: 'balanced',
+            presetVersion: 'v1',
+            guidance: 0,
+            steps: 0,
+            variation: 0,
+            method: 'waiting'
+        };
 
         textInput.addEventListener('input', () => {
             charCount.textContent = textInput.value.length;
         });
+
+        function resetQualityPanel(statusText = 'Waiting') {
+            qualitySummary.evaluated = 0;
+            qualitySummary.errors = 0;
+            qualitySummary.confidenceWeightedSum = 0;
+            qualitySummary.mismatches = [];
+            qualitySummary.preset = presetSelect.value;
+            qualitySummary.presetVersion = presetVersionSelect.value;
+            qualitySummary.guidance = 0;
+            qualitySummary.steps = 0;
+            qualitySummary.variation = 0;
+            qualitySummary.method = statusText;
+
+            metricMethod.textContent = statusText;
+            metricCer.textContent = '--';
+            metricAcc.textContent = '--';
+            metricErr.textContent = '--';
+            metricMeta.textContent = 'Run synthesis to compute estimated typo rate.';
+            metricMismatch.textContent = '';
+        }
+
+        function mergeQualityMetrics(quality, offset = 0) {
+            if (!quality) {
+                return;
+            }
+
+            const evaluated = Number(quality.evaluated || 0);
+            const errors = Number(quality.errors || 0);
+            const meanConfidence = Number(quality.mean_confidence || 0);
+
+            qualitySummary.evaluated += evaluated;
+            qualitySummary.errors += errors;
+            qualitySummary.confidenceWeightedSum += (meanConfidence * evaluated);
+            qualitySummary.method = quality.method || qualitySummary.method;
+            qualitySummary.preset = quality.preset || qualitySummary.preset;
+            qualitySummary.presetVersion = quality.preset_version || qualitySummary.presetVersion;
+            qualitySummary.guidance = Number(quality.guidance_scale || qualitySummary.guidance || 0);
+            qualitySummary.steps = Number(quality.steps || qualitySummary.steps || 0);
+            qualitySummary.variation = Number(quality.variation || qualitySummary.variation || 0);
+
+            if (Array.isArray(quality.mismatches)) {
+                quality.mismatches.forEach(item => {
+                    if (qualitySummary.mismatches.length >= 10) {
+                        return;
+                    }
+                    qualitySummary.mismatches.push({
+                        pos: Number(item.pos || 0) + offset,
+                        expected: item.expected || '?',
+                        predicted: item.predicted || '?',
+                        confidence: Number(item.confidence || 0)
+                    });
+                });
+            }
+
+            const cer = qualitySummary.evaluated > 0 ? qualitySummary.errors / qualitySummary.evaluated : 0;
+            const acc = 1 - cer;
+            const conf = qualitySummary.evaluated > 0 ? qualitySummary.confidenceWeightedSum / qualitySummary.evaluated : 0;
+
+            metricMethod.textContent = qualitySummary.method === 'template_match_proxy' ? 'Template OCR' : qualitySummary.method;
+            metricCer.textContent = `${(cer * 100).toFixed(1)}%`;
+            metricAcc.textContent = `${(acc * 100).toFixed(1)}%`;
+            metricErr.textContent = `${qualitySummary.errors}/${qualitySummary.evaluated}`;
+            metricMeta.textContent = `Preset: ${qualitySummary.preset}/${qualitySummary.presetVersion} | Guidance: ${qualitySummary.guidance.toFixed(2)} | Steps: ${qualitySummary.steps} | Mean conf: ${conf.toFixed(2)}`;
+
+            if (qualitySummary.mismatches.length === 0) {
+                metricMismatch.textContent = 'No mismatches detected in current estimate.';
+            } else {
+                metricMismatch.textContent = qualitySummary.mismatches
+                    .map(item => `#${item.pos + 1}: ${item.expected} -> ${item.predicted} (${item.confidence.toFixed(2)})`)
+                    .join(' | ');
+            }
+        }
+
+        resetQualityPanel();
 
         function ensureOutputContainerReady() {
             outputText.style.display = 'flex';
@@ -341,21 +491,28 @@
             }
         }
 
-        async function generateChunks({ chunks, style, variation, density, onProgress, onChunkDone }) {
+        async function generateChunks({ chunks, style, variation, density, preset, presetVersion, onProgress, onChunkDone }) {
+            let visibleOffset = 0;
             for (let i = 0; i < chunks.length; i++) {
                 if (onProgress) {
                     onProgress(i, chunks.length);
                 }
 
+                const chunkText = chunks[i];
+                const chunkOffset = visibleOffset;
+                visibleOffset += Array.from(chunkText).filter(ch => ch.trim().length > 0).length;
+
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        text: chunks[i],
+                        text: chunkText,
                         style_dir: style,
-                            variation: parseFloat(variation),
+                        variation: parseFloat(variation),
                         density: parseInt(density),
-                        chunk_index: i
+                        chunk_index: i,
+                        preset: preset,
+                        preset_version: presetVersion
                     })
                 });
 
@@ -365,7 +522,7 @@
                 }
 
                 if (onChunkDone) {
-                    onChunkDone(data.images);
+                    onChunkDone(data, { chunkIndex: i, chunkOffset, chunkText });
                 }
             }
         }
@@ -376,6 +533,8 @@
             const style = styleSelect.value;
             const variation = rangeVariation.value;
             const density = rangeDensity.value;
+            const preset = presetSelect.value;
+            const presetVersion = presetVersionSelect.value;
             
             if (!style) {
                 alert('Please select a font style first.');
@@ -392,6 +551,7 @@
 
             outputText.innerHTML = '';
             ensureOutputContainerReady();
+            resetQualityPanel('Running');
 
             const chunkSize = 6;
             const chunks = splitTextIntoChunks(text, chunkSize).filter(chunk => chunk.trim().length > 0);
@@ -399,7 +559,7 @@
             if (chunks.length === 0) {
                 alert('Please enter visible characters.');
                 runBtn.innerHTML = originalText;
-                runBtn.classList.remove('opacity-75', 'pointer-events-none');
+                setButtonsBusy(false);
                 return;
             }
             
@@ -409,11 +569,16 @@
                     style,
                     variation,
                     density,
+                    preset,
+                    presetVersion,
                     onProgress: (index, total) => {
                         const progress = Math.round((index / total) * 100);
                         runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING ${progress}% (${index + 1}/${total})`;
                     },
-                    onChunkDone: (images) => appendGeneratedImages(images)
+                    onChunkDone: (data, context) => {
+                        appendGeneratedImages(data.images);
+                        mergeQualityMetrics(data.quality, context.chunkOffset);
+                    }
                 });
 
                 runBtn.innerHTML = `<span class="material-symbols-outlined">check_circle</span> SYNTHESIS COMPLETE`;
@@ -430,6 +595,8 @@
             const text = textInput.value;
             const style = styleSelect.value;
             const density = rangeDensity.value;
+            const preset = presetSelect.value;
+            const presetVersion = presetVersionSelect.value;
             const variationA = 0.20;
             const variationB = 0.80;
 
@@ -445,6 +612,8 @@
             const originalCompareText = compareBtn.innerHTML;
             compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING 0%...`;
             setButtonsBusy(true);
+            resetQualityPanel('A/B Debug');
+            metricMeta.textContent = 'A/B compare keeps metrics for visual tuning; use RUN for final CER estimate.';
 
             const chunkSize = 6;
             const chunks = splitTextIntoChunks(text, chunkSize).filter(chunk => chunk.trim().length > 0);
@@ -463,11 +632,13 @@
                     style,
                     variation: variationA,
                     density,
+                    preset,
+                    presetVersion,
                     onProgress: (index, total) => {
                         const overall = Math.round((index / (total * 2)) * 100);
                         compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING ${overall}% (A ${index + 1}/${total})`;
                     },
-                    onChunkDone: (images) => appendGeneratedImages(images, leftContainer)
+                    onChunkDone: (data) => appendGeneratedImages(data.images, leftContainer)
                 });
 
                 await generateChunks({
@@ -475,11 +646,13 @@
                     style,
                     variation: variationB,
                     density,
+                    preset,
+                    presetVersion,
                     onProgress: (index, total) => {
                         const overall = Math.round(((total + index) / (total * 2)) * 100);
                         compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING ${overall}% (B ${index + 1}/${total})`;
                     },
-                    onChunkDone: (images) => appendGeneratedImages(images, rightContainer)
+                    onChunkDone: (data) => appendGeneratedImages(data.images, rightContainer)
                 });
 
                 compareBtn.innerHTML = `<span class="material-symbols-outlined">check_circle</span> A/B READY`;
@@ -647,12 +820,34 @@
             const container = document.getElementById('output-text');
             const images = container.querySelectorAll('img');
             if (images.length === 0) return alert("No content to export");
-            
-            // Determine bounds
+
+            // Compute robust bounds from actual rendered image rects to avoid clipping.
             const containerRect = container.getBoundingClientRect();
-            // Use container scrollWidth/Height to capture all content
-            const width = container.scrollWidth;
-            const height = container.scrollHeight;
+            const rendered = [];
+            let minX = Number.POSITIVE_INFINITY;
+            let minY = Number.POSITIVE_INFINITY;
+            let maxX = Number.NEGATIVE_INFINITY;
+            let maxY = Number.NEGATIVE_INFINITY;
+
+            for (let img of images) {
+                if (!img.complete) continue;
+                const rect = img.getBoundingClientRect();
+                const x = (rect.left - containerRect.left) + container.scrollLeft;
+                const y = (rect.top - containerRect.top) + container.scrollTop;
+                const w = rect.width;
+                const h = rect.height;
+                rendered.push({ img, x, y, w, h });
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x + w);
+                maxY = Math.max(maxY, y + h);
+            }
+
+            if (rendered.length === 0) return alert("Images are not ready yet. Please wait and retry.");
+
+            const padding = 12;
+            const width = Math.max(1, Math.ceil((maxX - minX) + padding * 2));
+            const height = Math.max(1, Math.ceil((maxY - minY) + padding * 2));
             
             const canvas = document.createElement('canvas');
             canvas.width = width;
@@ -662,18 +857,10 @@
             // Invert filter for black ink
             ctx.filter = 'invert(1)';
             
-            for (let img of images) {
-                // Ensure image is loaded
-                if (!img.complete) continue;
-                
-                // Get relative position including scroll
-                // We use offsetLeft/Top which is relative to offsetParent (container)
-                const x = img.offsetLeft;
-                const y = img.offsetTop;
-                const w = img.offsetWidth;
-                const h = img.offsetHeight;
-                
-                ctx.drawImage(img, x, y, w, h);
+            for (let item of rendered) {
+                const drawX = (item.x - minX) + padding;
+                const drawY = (item.y - minY) + padding;
+                ctx.drawImage(item.img, drawX, drawY, item.w, item.h);
             }
             ctx.filter = 'none';
             

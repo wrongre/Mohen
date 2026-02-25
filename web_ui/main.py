@@ -287,6 +287,9 @@ import random
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
+import numpy as np
+import cv2
+import unicodedata
 from src import (FontDiffuserDPMPipeline, FontDiffuserModelDPM, build_ddpm_scheduler,
                  build_unet, build_content_encoder, build_style_encoder)
 from utils import ttf2im, is_char_in_font
@@ -300,6 +303,414 @@ class GenerateRequest(BaseModel):
     variation: float = 0.5
     density: int = 50
     chunk_index: int = 0
+    preset: str = "balanced"
+    preset_version: str = "v1"
+
+
+def get_inference_profile(preset: str, variation_ratio: float, preset_version: str):
+    profile = (preset or "balanced").strip().lower()
+    if profile not in {"fidelity", "balanced", "style"}:
+        profile = "balanced"
+
+    version = (preset_version or "v1").strip().lower()
+    if version not in {"v1", "v2", "v3"}:
+        version = "v1"
+
+    if version == "v3":
+        if profile == "fidelity":
+            guidance_scale = 12.4 + variation_ratio * 4.8
+            num_inference_step = 30 + int(variation_ratio * 16)
+            style_noise_strength = 0.0015 + variation_ratio * 0.008
+            max_angle = 0.08 + variation_ratio * 0.45
+        elif profile == "style":
+            guidance_scale = 4.0 + variation_ratio * 4.0
+            num_inference_step = 10 + int(variation_ratio * 10)
+            style_noise_strength = 0.022 + variation_ratio * 0.110
+            max_angle = 2.8 + variation_ratio * 9.0
+        else:
+            guidance_scale = 8.0 + variation_ratio * 4.5
+            num_inference_step = 20 + int(variation_ratio * 12)
+            style_noise_strength = 0.006 + variation_ratio * 0.034
+            max_angle = 0.7 + variation_ratio * 3.2
+
+        suppress_extra_strokes = True
+        suppress_kernel = 2
+        suppress_min_area = 10
+        enable_complexity_adapt = True
+        max_resample_simple = 3
+        max_resample_medium = 2
+        max_resample_complex = 1
+
+        if profile == "fidelity":
+            punctuation_direct_render = False
+            fallback_to_content_simple = True
+            fallback_to_content_medium = True
+            min_similarity_simple = 0.82
+            min_similarity_medium = 0.72
+            punctuation_noise_scale = 0.12
+            punctuation_angle_scale = 0.10
+            punctuation_similarity_floor = 0.92
+        elif profile == "balanced":
+            punctuation_direct_render = False
+            fallback_to_content_simple = True
+            fallback_to_content_medium = False
+            min_similarity_simple = 0.74
+            min_similarity_medium = 0.64
+            punctuation_noise_scale = 0.16
+            punctuation_angle_scale = 0.14
+            punctuation_similarity_floor = 0.88
+        else:
+            punctuation_direct_render = False
+            fallback_to_content_simple = True
+            fallback_to_content_medium = False
+            min_similarity_simple = 0.68
+            min_similarity_medium = 0.56
+            punctuation_noise_scale = 0.20
+            punctuation_angle_scale = 0.18
+            punctuation_similarity_floor = 0.82
+
+    elif version == "v2":
+        if profile == "fidelity":
+            guidance_scale = 11.2 + variation_ratio * 4.8
+            num_inference_step = 28 + int(variation_ratio * 14)
+            style_noise_strength = 0.002 + variation_ratio * 0.012
+            max_angle = 0.3 + variation_ratio * 1.2
+            suppress_extra_strokes = True
+            suppress_kernel = 2
+            suppress_min_area = 14
+        elif profile == "style":
+            guidance_scale = 4.2 + variation_ratio * 4.3
+            num_inference_step = 10 + int(variation_ratio * 10)
+            style_noise_strength = 0.028 + variation_ratio * 0.120
+            max_angle = 3.2 + variation_ratio * 10.5
+            suppress_extra_strokes = False
+            suppress_kernel = 0
+            suppress_min_area = 0
+        else:
+            guidance_scale = 7.4 + variation_ratio * 4.6
+            num_inference_step = 18 + int(variation_ratio * 12)
+            style_noise_strength = 0.008 + variation_ratio * 0.040
+            max_angle = 0.8 + variation_ratio * 3.5
+            suppress_extra_strokes = True
+            suppress_kernel = 2
+            suppress_min_area = 10
+
+        enable_complexity_adapt = False
+        max_resample_simple = 1
+        max_resample_medium = 1
+        max_resample_complex = 1
+        punctuation_direct_render = False
+        fallback_to_content_simple = False
+        fallback_to_content_medium = False
+        min_similarity_simple = 0.0
+        min_similarity_medium = 0.0
+        punctuation_noise_scale = 0.4
+        punctuation_angle_scale = 0.3
+        punctuation_similarity_floor = 0.0
+
+    else:
+        if profile == "fidelity":
+            guidance_scale = 9.5 + variation_ratio * 3.0
+            num_inference_step = 22 + int(variation_ratio * 10)
+            style_noise_strength = 0.004 + variation_ratio * 0.022
+            max_angle = 0.8 + variation_ratio * 2.0
+            suppress_extra_strokes = False
+            suppress_kernel = 0
+            suppress_min_area = 0
+        elif profile == "style":
+            guidance_scale = 5.8 + variation_ratio * 5.4
+            num_inference_step = 12 + int(variation_ratio * 12)
+            style_noise_strength = 0.018 + variation_ratio * 0.090
+            max_angle = 1.8 + variation_ratio * 8.0
+            suppress_extra_strokes = False
+            suppress_kernel = 0
+            suppress_min_area = 0
+        else:
+            guidance_scale = 6.8 + variation_ratio * 6.0
+            num_inference_step = 16 + int(variation_ratio * 14)
+            style_noise_strength = 0.010 + variation_ratio * 0.060
+            max_angle = 1.2 + variation_ratio * 5.0
+            suppress_extra_strokes = False
+            suppress_kernel = 0
+            suppress_min_area = 0
+
+        enable_complexity_adapt = False
+        max_resample_simple = 1
+        max_resample_medium = 1
+        max_resample_complex = 1
+        punctuation_direct_render = False
+        fallback_to_content_simple = False
+        fallback_to_content_medium = False
+        min_similarity_simple = 0.0
+        min_similarity_medium = 0.0
+        punctuation_noise_scale = 0.4
+        punctuation_angle_scale = 0.3
+        punctuation_similarity_floor = 0.0
+
+    return {
+        "preset": profile,
+        "preset_version": version,
+        "guidance_scale": guidance_scale,
+        "num_inference_step": num_inference_step,
+        "style_noise_strength": style_noise_strength,
+        "max_angle": max_angle,
+        "suppress_extra_strokes": suppress_extra_strokes,
+        "suppress_kernel": suppress_kernel,
+        "suppress_min_area": suppress_min_area,
+        "enable_complexity_adapt": enable_complexity_adapt,
+        "max_resample_simple": max_resample_simple,
+        "max_resample_medium": max_resample_medium,
+        "max_resample_complex": max_resample_complex,
+        "punctuation_direct_render": punctuation_direct_render,
+        "fallback_to_content_simple": fallback_to_content_simple,
+        "fallback_to_content_medium": fallback_to_content_medium,
+        "min_similarity_simple": min_similarity_simple,
+        "min_similarity_medium": min_similarity_medium,
+        "punctuation_noise_scale": punctuation_noise_scale,
+        "punctuation_angle_scale": punctuation_angle_scale,
+        "punctuation_similarity_floor": punctuation_similarity_floor,
+    }
+
+
+def _normalize_ink_map(image_arr: np.ndarray):
+    resized = cv2.resize(image_arr, (64, 64), interpolation=cv2.INTER_AREA).astype(np.float32)
+    if resized.max() > 0:
+        resized = resized / 255.0
+    norm = np.linalg.norm(resized)
+    if norm > 0:
+        resized = resized / norm
+    return resized
+
+
+def build_char_templates(font, chars):
+    templates = {}
+    for ch in chars:
+        if not ch.strip():
+            continue
+        try:
+            glyph = ttf2im(font, ch, fsize=96)
+            if glyph is None:
+                continue
+            gray = np.array(glyph.convert("L"), dtype=np.uint8)
+            ink = 255 - gray
+            templates[ch] = _normalize_ink_map(ink)
+        except Exception:
+            continue
+    return templates
+
+
+def _extract_feature_from_gray(gray_img: np.ndarray):
+    ink = 255 - gray_img
+    norm = _normalize_ink_map(ink)
+    binary = (gray_img < 220).astype(np.uint8)
+    ink_ratio = float(np.mean(binary))
+    num_labels, _, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    comp_count = 0
+    for label_id in range(1, num_labels):
+        area = stats[label_id, cv2.CC_STAT_AREA]
+        if area >= 3:
+            comp_count += 1
+
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 1))
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 7))
+    horiz_map = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)
+    vert_map = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel)
+    horiz_strength = float(np.mean(horiz_map))
+    vert_strength = float(np.mean(vert_map))
+
+    return {
+        "norm": norm,
+        "ink_ratio": ink_ratio,
+        "comp_count": comp_count,
+        "horiz_strength": horiz_strength,
+        "vert_strength": vert_strength,
+        "horizontal_bias": max(0.0, horiz_strength - vert_strength),
+    }
+
+
+def build_char_feature_bank(font, chars):
+    feature_bank = {}
+    for ch in chars:
+        if not ch.strip():
+            continue
+        try:
+            glyph = ttf2im(font, ch, fsize=96)
+            if glyph is None:
+                continue
+            gray = np.array(glyph.convert("L"), dtype=np.uint8)
+            feature_bank[ch] = _extract_feature_from_gray(gray)
+        except Exception:
+            continue
+    return feature_bank
+
+
+def classify_complexity_from_ink_ratio(ink_ratio: float):
+    if ink_ratio < 0.08:
+        return "simple"
+    if ink_ratio < 0.16:
+        return "medium"
+    return "complex"
+
+
+def is_punctuation_char(ch: str):
+    if not ch:
+        return False
+    return unicodedata.category(ch).startswith("P")
+
+
+def apply_mask_cleanup(mask_np: np.ndarray, kernel_size: int, min_area: int):
+    result = mask_np
+    if kernel_size >= 2:
+        kernel = np.ones((kernel_size, kernel_size), np.uint8)
+        result = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
+
+    if min_area > 0:
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(result, connectivity=8)
+        filtered = np.zeros_like(result)
+        for label_id in range(1, num_labels):
+            area = stats[label_id, cv2.CC_STAT_AREA]
+            if area >= min_area:
+                filtered[labels == label_id] = result[labels == label_id]
+        result = filtered
+    return result
+
+
+def build_content_mask(content_pil: Image.Image):
+    gray = np.array(content_pil.convert("L"), dtype=np.uint8)
+    mask_np = 255 - gray
+    return mask_np
+
+
+def build_content_canvas(content_pil: Image.Image):
+    mask_np = build_content_mask(content_pil)
+    white_canvas = Image.new("RGBA", content_pil.size, (255, 255, 255, 0))
+    white_canvas.putalpha(Image.fromarray(mask_np, mode="L"))
+    return white_canvas, mask_np
+
+
+def similarity_to_expected(mask_np: np.ndarray, expected_feature: dict):
+    if expected_feature is None:
+        return 0.0
+    sample_norm = _normalize_ink_map(mask_np)
+    return float(np.sum(sample_norm * expected_feature["norm"]))
+
+
+def score_candidate(mask_np: np.ndarray, expected_feature: dict, complexity_level: str):
+    if expected_feature is None:
+        return 0.0
+
+    sample_norm = _normalize_ink_map(mask_np)
+    sim = float(np.sum(sample_norm * expected_feature["norm"]))
+
+    binary = (mask_np > 20).astype(np.uint8)
+    ink_ratio = float(np.mean(binary))
+    ratio_gap = abs(ink_ratio - expected_feature["ink_ratio"])
+
+    num_labels, _, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    comp_count = 0
+    for label_id in range(1, num_labels):
+        area = stats[label_id, cv2.CC_STAT_AREA]
+        if area >= 3:
+            comp_count += 1
+    comp_gap = abs(comp_count - expected_feature["comp_count"])
+
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 1))
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 7))
+    cand_horiz = float(np.mean(cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)))
+    cand_vert = float(np.mean(cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel)))
+
+    if complexity_level == "simple":
+        ratio_weight = 3.0
+        comp_weight = 0.8
+        horiz_weight = 2.4
+    elif complexity_level == "medium":
+        ratio_weight = 2.0
+        comp_weight = 0.45
+        horiz_weight = 1.6
+    else:
+        ratio_weight = 1.0
+        comp_weight = 0.2
+        horiz_weight = 0.8
+
+    horizontal_drift_penalty = 0.0
+    if expected_feature.get("horizontal_bias", 0.0) > 0.02:
+        horiz_drop = max(0.0, expected_feature["horiz_strength"] - cand_horiz)
+        diagonal_tendency = max(0.0, cand_vert - expected_feature["vert_strength"]) * 0.5
+        horizontal_drift_penalty = horiz_weight * (horiz_drop + diagonal_tendency)
+
+    return sim - (ratio_weight * ratio_gap) - (comp_weight * comp_gap) - horizontal_drift_penalty
+
+
+def estimate_char_quality(expected_chars, generated_rgba_images, templates):
+    if not expected_chars:
+        return {
+            "evaluated": 0,
+            "errors": 0,
+            "accuracy": 1.0,
+            "cer_est": 0.0,
+            "mean_confidence": 0.0,
+            "mismatches": [],
+            "method": "template_match_proxy",
+        }
+
+    errors = 0
+    confidence_values = []
+    mismatches = []
+    template_items = list(templates.items())
+
+    if not template_items:
+        return {
+            "evaluated": len(expected_chars),
+            "errors": 0,
+            "accuracy": 0.0,
+            "cer_est": 1.0,
+            "mean_confidence": 0.0,
+            "mismatches": [],
+            "method": "template_match_proxy",
+        }
+
+    for idx, expected_char in enumerate(expected_chars):
+        if idx >= len(generated_rgba_images):
+            errors += 1
+            mismatches.append({"pos": idx, "expected": expected_char, "predicted": "∅", "confidence": 0.0})
+            continue
+
+        rgba_img = generated_rgba_images[idx]
+        alpha = np.array(rgba_img.split()[-1], dtype=np.uint8)
+        sample = _normalize_ink_map(alpha)
+
+        scores = []
+        for char_label, template in template_items:
+            score = float(np.sum(sample * template))
+            scores.append((char_label, score))
+
+        scores.sort(key=lambda item: item[1], reverse=True)
+        predicted_char, top_score = scores[0]
+        second_score = scores[1][1] if len(scores) > 1 else 0.0
+        confidence = max(0.0, min(1.0, (top_score - second_score + 1.0) / 2.0))
+        confidence_values.append(confidence)
+
+        if predicted_char != expected_char:
+            errors += 1
+            if len(mismatches) < 10:
+                mismatches.append({
+                    "pos": idx,
+                    "expected": expected_char,
+                    "predicted": predicted_char,
+                    "confidence": round(confidence, 3)
+                })
+
+    evaluated = len(expected_chars)
+    accuracy = max(0.0, 1.0 - (errors / evaluated))
+    return {
+        "evaluated": evaluated,
+        "errors": errors,
+        "accuracy": round(accuracy, 4),
+        "cer_est": round(1.0 - accuracy, 4),
+        "mean_confidence": round(float(np.mean(confidence_values)) if confidence_values else 0.0, 4),
+        "mismatches": mismatches,
+        "method": "template_match_proxy",
+    }
 
 def get_latest_ckpt(base_dir):
     if not os.path.exists(base_dir):
@@ -494,9 +905,10 @@ async def generate_text(request: GenerateRequest):
         style_image_pil = style_image_pil.crop((crop_margin, crop_margin, w - crop_margin, h - crop_margin))
         style_image_pil = style_image_pil.resize((96, 96), Image.BICUBIC)
 
-        # Variation Mapping (Strong Perceptual Separation)
+        # Variation Mapping (0.0 ~ 1.0)
         variation_ratio = max(0.0, min(1.0, float(request.variation or 0.0)))
         variation_seed_bucket = int(variation_ratio * 1000)
+        profile = get_inference_profile(request.preset, variation_ratio, request.preset_version)
 
         # Base seed includes chunk index so progressive generation doesn't repeat too similarly.
         base_seed = 1337 + (request.chunk_index * 100003) + (variation_seed_bucket * 97)
@@ -504,12 +916,10 @@ async def generate_text(request: GenerateRequest):
         if torch.cuda.is_available():
             torch.cuda.manual_seed(base_seed)
 
-        # Wider range than before to create stronger visible differences.
-        pipe.guidance_scale = 6.0 + (variation_ratio * 7.0)
-        num_inference_step = 14 + int(variation_ratio * 14)
-
-        # Style perturbation strength for visible but controlled diversity.
-        style_noise_strength = 0.01 + (variation_ratio * 0.08)
+        pipe.guidance_scale = profile["guidance_scale"]
+        num_inference_step = profile["num_inference_step"]
+        style_noise_strength = profile["style_noise_strength"]
+        max_angle = profile["max_angle"]
         
         # Transforms
         content_transform = transforms.Compose([
@@ -524,8 +934,12 @@ async def generate_text(request: GenerateRequest):
         ])
         
         style_tensor_base = style_transform(style_image_pil).unsqueeze(0).to(device)
+        candidate_chars = sorted({ch for ch in request.text if ch.strip()})
+        template_bank = build_char_templates(font, candidate_chars)
+        feature_bank = build_char_feature_bank(font, candidate_chars)
         
-        generated_images = []
+        generated_expected_chars = []
+        generated_rgba_images = []
         
         # Generate each char
         # Limit length for demo performance
@@ -544,43 +958,123 @@ async def generate_text(request: GenerateRequest):
             except:
                 continue
 
+            generated_expected_chars.append(char)
+            glyph_gray = np.array(content_pil.convert("L"), dtype=np.uint8)
+            glyph_ink_ratio = float(np.mean(glyph_gray < 220))
+            complexity_level = classify_complexity_from_ink_ratio(glyph_ink_ratio)
+            content_canvas, content_mask_np = build_content_canvas(content_pil)
+
+            if profile["enable_complexity_adapt"]:
+                if complexity_level == "simple":
+                    local_noise_strength = style_noise_strength * 0.45
+                    local_max_angle = max_angle * 0.45
+                    max_resample = profile["max_resample_simple"]
+                    local_kernel = max(2, profile["suppress_kernel"])
+                    local_min_area = max(12, profile["suppress_min_area"])
+                elif complexity_level == "medium":
+                    local_noise_strength = style_noise_strength * 0.75
+                    local_max_angle = max_angle * 0.75
+                    max_resample = profile["max_resample_medium"]
+                    local_kernel = max(2, profile["suppress_kernel"])
+                    local_min_area = max(8, profile["suppress_min_area"])
+                else:
+                    local_noise_strength = style_noise_strength
+                    local_max_angle = max_angle
+                    max_resample = profile["max_resample_complex"]
+                    local_kernel = profile["suppress_kernel"]
+                    local_min_area = profile["suppress_min_area"]
+            else:
+                local_noise_strength = style_noise_strength
+                local_max_angle = max_angle
+                max_resample = 1
+                local_kernel = profile["suppress_kernel"]
+                local_min_area = profile["suppress_min_area"]
+
+            if is_punctuation_char(char):
+                local_kernel = max(local_kernel, 2)
+                local_min_area = max(local_min_area, 14)
+                local_noise_strength = min(local_noise_strength, style_noise_strength * profile["punctuation_noise_scale"])
+                local_max_angle = min(local_max_angle, max_angle * profile["punctuation_angle_scale"])
+
+                if profile["punctuation_direct_render"]:
+                    generated_rgba_images.append(content_canvas)
+                    continue
+
             # Character-level deterministic seed for stronger, controllable variation.
             char_seed = base_seed + ((char_idx + 1) * 7919) + ord(char[0])
             torch.manual_seed(char_seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(char_seed)
 
-            # Light geometric jitter on content glyph, grows with variation.
-            if variation_ratio > 0:
-                max_angle = 1.0 + variation_ratio * 7.0
-                angle = (random.random() - 0.5) * 2.0 * max_angle
-                content_pil = content_pil.rotate(angle, resample=Image.BICUBIC, fillcolor=255)
+            best_canvas = None
+            best_score = -1e9
+            expected_feature = feature_bank.get(char)
+            best_similarity = -1e9
 
-            style_tensor = style_tensor_base
-            if variation_ratio > 0:
-                style_noise = torch.randn_like(style_tensor_base) * style_noise_strength
-                style_tensor = torch.clamp(style_tensor_base + style_noise, -1.0, 1.0)
-                
-            content_tensor = content_transform(content_pil).unsqueeze(0).to(device)
-            
-            # Inference
-            with torch.no_grad():
-                images = pipe.generate(
-                    content_images=content_tensor,
-                    style_images=style_tensor,
-                    batch_size=1,
-                    order=2,
-                    num_inference_step=num_inference_step,
-                    content_encoder_downsample_size=3,
-                    t_start=None,
-                    t_end=None,
-                    dm_size=(96, 96),
-                    algorithm_type="dpmsolver++",
-                    skip_type="time_uniform",
-                    method="multistep",
-                    correcting_x0_fn=None
-                )
-                generated_images.append(images[0])
+            for attempt in range(max_resample):
+                attempt_seed = char_seed + attempt * 131
+                torch.manual_seed(attempt_seed)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed(attempt_seed)
+
+                local_content_pil = content_pil.copy()
+                if variation_ratio > 0:
+                    angle = (random.random() - 0.5) * 2.0 * local_max_angle
+                    local_content_pil = local_content_pil.rotate(angle, resample=Image.BICUBIC, fillcolor=255)
+
+                style_tensor = style_tensor_base
+                if variation_ratio > 0:
+                    style_noise = torch.randn_like(style_tensor_base) * local_noise_strength
+                    style_tensor = torch.clamp(style_tensor_base + style_noise, -1.0, 1.0)
+
+                content_tensor = content_transform(local_content_pil).unsqueeze(0).to(device)
+
+                with torch.no_grad():
+                    images = pipe.generate(
+                        content_images=content_tensor,
+                        style_images=style_tensor,
+                        batch_size=1,
+                        order=2,
+                        num_inference_step=num_inference_step,
+                        content_encoder_downsample_size=3,
+                        t_start=None,
+                        t_end=None,
+                        dm_size=(96, 96),
+                        algorithm_type="dpmsolver++",
+                        skip_type="time_uniform",
+                        method="multistep",
+                        correcting_x0_fn=None
+                    )
+
+                from PIL import ImageOps
+                generated_rgb = images[0].convert("RGB")
+                img_inverted = ImageOps.invert(generated_rgb)
+                mask_np = np.array(img_inverted.convert("L"), dtype=np.uint8)
+
+                if profile["suppress_extra_strokes"]:
+                    mask_np = apply_mask_cleanup(mask_np, local_kernel, local_min_area)
+
+                white_canvas = Image.new("RGBA", generated_rgb.size, (255, 255, 255, 0))
+                white_canvas.putalpha(Image.fromarray(mask_np, mode="L"))
+
+                current_score = score_candidate(mask_np, expected_feature, complexity_level)
+                current_similarity = similarity_to_expected(mask_np, expected_feature)
+                if current_score > best_score or best_canvas is None:
+                    best_score = current_score
+                    best_canvas = white_canvas
+                    best_similarity = current_similarity
+
+            if complexity_level == "simple" and profile["fallback_to_content_simple"]:
+                if best_similarity < profile["min_similarity_simple"]:
+                    best_canvas = content_canvas
+            elif complexity_level == "medium" and profile["fallback_to_content_medium"]:
+                if best_similarity < profile["min_similarity_medium"]:
+                    best_canvas = content_canvas
+
+            if is_punctuation_char(char) and best_similarity < profile["punctuation_similarity_floor"]:
+                best_canvas = content_canvas
+
+            generated_rgba_images.append(best_canvas)
         
         # Save results
         output_urls = []
@@ -588,40 +1082,22 @@ async def generate_text(request: GenerateRequest):
         os.makedirs(gen_dir, exist_ok=True)
         
         timestamp_ms = int(time.time() * 1000)
-        for i, img in enumerate(generated_images):
+        for i, white_canvas in enumerate(generated_rgba_images):
             filename = f"gen_{timestamp_ms}_{request.chunk_index}_{i}_{uuid.uuid4().hex[:8]}.png"
             path = os.path.join(gen_dir, filename)
-            
-            # Post-processing: Convert to Transparent Ink
-            # Strategy:
-            # 1. The model generates Black Ink on White Paper.
-            # 2. We want to extract the Ink.
-            # 3. User requested: Invert (White Ink on Black) -> Make Black Transparent.
-            
-            from PIL import ImageOps
-            
-            # Ensure we are working with the raw generated image
-            img = img.convert("RGB")
-            
-            # 1. Invert: Black Ink (0) becomes White Ink (255). White Paper (255) becomes Black Paper (0).
-            img_inverted = ImageOps.invert(img)
-            
-            # 2. Create Alpha Mask from the inverted image (Grayscale)
-            # Brighter pixels (Ink) -> More Opaque. Darker pixels (Paper) -> More Transparent.
-            mask = img_inverted.convert("L")
-            
-            # 3. Create a solid White image
-            white_canvas = Image.new("RGBA", img.size, (255, 255, 255, 0))
-            
-            # 4. Apply the mask to the alpha channel of the white canvas
-            # Result: White Ink on Transparent Background
-            white_canvas.putalpha(mask)
-            
+
             # Save
             white_canvas.save(path, format="PNG")
             output_urls.append(f"/static/generated/{filename}")
+
+        quality = estimate_char_quality(generated_expected_chars, generated_rgba_images, template_bank)
+        quality["preset"] = profile["preset"]
+        quality["preset_version"] = profile["preset_version"]
+        quality["guidance_scale"] = round(float(profile["guidance_scale"]), 4)
+        quality["steps"] = int(profile["num_inference_step"])
+        quality["variation"] = round(float(variation_ratio), 4)
             
-        return JSONResponse(content={"images": output_urls})
+        return JSONResponse(content={"images": output_urls, "quality": quality})
         
     except Exception as e:
         import traceback

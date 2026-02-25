@@ -1,10 +1,162 @@
 # AI Context & Progress Log
 
 > **Purpose**: This file maintains the continuity of the development context. Please read this first when starting a new session.
-> **Last Updated**: 2026-02-24 22:35 CST
+> **Last Updated**: 2026-02-25 23:40 CST
 
 ## 🚀 Project Status: Bug Fixes & Stability Phase
 Critical startup & training bugs fixed. Full training pipeline now working end-to-end. UI remains polished and functional.
+
+### 🌙 End-of-Day Wrap-up (2026-02-25)
+
+Session result:
+- Multiple inference iterations completed (`v1` / `v2` / `v3`) with measurable quality improvements.
+- PNG export clipping issue confirmed fixed.
+- Core issue persists but narrowed: simple-character structural stability is still the main bottleneck.
+
+Latest user confirmation:
+- With Yan Zhenqing-style regular-script training samples, error rate drops significantly.
+- Remaining residual errors are localized (simple characters + punctuation behavior + horizontal drift in some cases).
+- Overall improved, but still below final clone-quality target.
+
+Next-session intent (2026-02-26):
+- Continue testing with additional calligraphy fonts to map style-vs-accuracy trade-offs.
+- Keep focus on core clone quality first; postpone non-critical UI expansion.
+
+### 🧪 Validation Log (2026-02-25)
+**Preset Test: `fidelity` (文字保真)**
+
+User-reported wrong characters in current run:
+- `天`
+- `志`
+- `弗`
+- `山`
+- `不`
+- `也`
+
+Notes:
+- Keep this set as a regression baseline for upcoming clone-quality tuning.
+- Requirement confirmed: solve issues incrementally without breaking previously fixed behavior.
+
+**Preset Test: `balanced` (平衡)**
+
+User-reported wrong/suspicious characters in current run:
+- `天`
+- `志`
+- `弗`
+- `山`
+- `海` (uncertain)
+- `不`
+- `也`
+
+Observations:
+- Overall close to `fidelity` result set.
+- Deformation is slightly larger than `fidelity`, but still acceptable.
+
+**New Bug Found (pending, do not fix yet):**
+- Exported PNG is incomplete / clipped compared with on-screen preview.
+- Keep as backlog until `style` preset validation is finished.
+
+**Preset Test: `style` (风格优先)**
+
+User-reported wrong/suspicious characters in current run:
+- `天`
+- `志`
+- `无`
+- `远` (close)
+- `弗` (closer than in `balanced`)
+- `届` (close)
+- `海` (close)
+- `不`
+
+Cross-preset observations:
+- `fidelity` / `balanced` / `style` are currently too similar; differences are not instantly recognizable.
+- Error pattern is consistent: simple characters tend to get extra strokes; missing strokes are less common.
+- Hypothesis: running-script connected-stroke style information is over-applied to simple structures, causing additive pen traces.
+
+### 🧪 Validation Log Addendum (2026-02-25)
+**Version Compare: `v1/fidelity` vs `v2/fidelity`**
+
+User observations:
+- Wrong-character set changed between versions.
+- `v1/fidelity` currently has fewer wrong characters than `v2/fidelity`.
+- Character `道` consistently shows extra strokes near the lower part of the 辶 component.
+
+New issues identified (record only, no fix yet):
+1. **Punctuation missing region**: punctuation glyph areas are sometimes not fully generated.
+2. **Punctuation-area noise**: significant noise appears around punctuation zones, especially near grid-line boundaries.
+
+Priority note:
+- Keep these as dedicated cleanup tasks after current version comparison wrap-up.
+
+### 🧪 Three-Group Comparative Notes (2026-02-25)
+
+User-side visual comparison summary:
+- `style` preset starts to show correct direction in some glyphs, but overall style dominance is still not strong enough.
+- Positive case in `style`: character `精` looks best; 米字旁 connected strokes are accurate; right-side `青` is also correct.
+- Positive case in `style`: final `不` has interesting/closer style behavior.
+- Negative case in `style`: both occurrences of `志` are wrong, while the second `志` is correct in both fidelity versions.
+- Structural confusion remains: `入` and `人` skeletons are not separated reliably; outputs collapse mostly to `人`.
+
+Action focus derived from this comparison:
+1. Keep strengthening style only where it improves connected radicals (e.g., 米字旁), avoid global over-application.
+2. Add confusion-pair guardrails for `入` vs `人` and targeted glyph checks for `志`.
+3. Preserve fidelity-friendly decoding path for characters where style causes structural collapse.
+
+### 🧪 Cross-Text Regression Check (2026-02-25)
+
+Status update from a new input text set:
+- PNG export clipping bug: **fixed/verified**.
+- Core character-accuracy issue persists across text sets.
+
+Observed persistent failures:
+- `入` still frequently collapses to `人`.
+- `一` remains unstable/incorrect.
+- `王` can be over-drawn (observed as 5 horizontal strokes).
+
+General pattern (stable across different test text):
+- Complex characters: lower error rate (not zero).
+- Simple characters: very high error rate (roughly around half in user observation).
+
+Conclusion:
+- Current v1/v2/v3 tuning improves behavior only partially; root issue for simple-character structure preservation is still unresolved.
+
+### 🧪 New Style Validation (Yan Zhenqing / Regular Script Bias) - 2026-02-25
+
+Result summary:
+- Overall character correctness improved significantly compared with previous running-script-heavy samples.
+- Most characters are correct; residual issues are now localized.
+
+Residual issues observed:
+1. Punctuation issue after "所趋": expected comma (，) but generated mark contains extra artifact/noise.
+2. Character `勤`: extra dot-like stroke appears.
+3. Character `无`: structure looks slightly abnormal.
+
+Interpretation:
+- Regular-script training samples strongly improve baseline structural correctness.
+- Remaining errors are now mostly punctuation cleanup and small additive-stroke artifacts.
+
+### 🧪 v3 Iteration Feedback (2026-02-25, latest)
+
+`v3/fidelity`:
+- `一` and `入` are correct now (but almost no stylization).
+- `王` / `江` / `业`: horizontal stroke trend drifts into a right-falling stroke (横 -> 捺 tendency).
+- `辈` incorrect.
+- Most other characters are acceptable.
+
+`v3/style`:
+- `雄` / `辈` show extra horizontal stroke.
+- `江` incorrect.
+- Second occurrence of `一` incorrect.
+- Overall acceptable direction; still has strong horizontal-to-right-falling drift.
+
+Punctuation:
+- Current punctuation is too close to standard font (overly rigid).
+- Requirement update: keep punctuation correctness first, but allow slight stylization instead of full standard-glyph rigidity.
+
+Next micro-tuning targets (no architecture change):
+1. Add horizontal-stroke protection to prevent 横 being over-transformed to 捺.
+2. Add extra-stroke suppression focus for `辈`/`雄`-like structures (generalized rule, not hard-coded chars).
+3. Add tiny style perturbation for punctuation in `v3` (very low amplitude), while preserving comma/period correctness.
 
 ### ✅ Evening Update (2026-02-24)
 **🎯 Focus: Variation Perceptibility + Progressive Generation UX**
