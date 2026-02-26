@@ -22,6 +22,45 @@ Next-session intent (2026-02-26):
 - Continue testing with additional calligraphy fonts to map style-vs-accuracy trade-offs.
 - Keep focus on core clone quality first; postpone non-critical UI expansion.
 
+### 🧪 Multi-Style Generalization Check (Yan style) - 2026-02-26
+
+`style/v3` user feedback:
+- Wrong list includes: `入`->`人`, `江`, `湖` (月 component extra stroke), `王` (horizontal drift), `间` (extra stroke), `生` (horizontal drift).
+- No raw/base glyph direct-output issue in this run.
+- Horizontal-stroke-to-right-falling drift still present.
+- Punctuation is acceptable but can be slightly more stylized.
+
+Applied follow-up tuning (generalized, non-hardcoded):
+1. Reduced style-v3 distortion amplitude (noise + angle), increased structural guidance and steps.
+2. Strengthened horizontal-stroke protection weights for simple/medium complexity characters.
+3. Slightly increased punctuation stylization range in style-v3 while preserving punctuation correctness floor.
+
+### 🧪 Yan Style Follow-up (2026-02-26, latest)
+
+Latest user validation:
+1. Horizontal-drift issue in specific characters still persists (bottom horizontal remains hard to recover in some cases).
+2. `胜` left component improved, but right-side `生` was negatively affected (trade-off observed).
+3. Punctuation stylization is inconsistent: first comma shows style, other punctuation remains close to baseline.
+
+Interim decision:
+- Do not over-focus on the stubborn horizontal-drift subset in this stage (may be tied to Yan training sample characteristics).
+- Treat this as a style-dependent limitation and continue broader generalization evaluation.
+
+### 🧪 Running Script Evaluation (2026-02-26)
+
+User result summary:
+- Character accuracy is still low (only about 6~7 characters correct in this run).
+- `人` / `入` confusion did not appear in this sample.
+- Horizontal-to-right-falling drift (横->捺) not observed here, suggesting this issue may be style-dependent rather than global.
+
+Style consistency observation:
+- First three sentences appear stylistically consistent.
+- Fourth sentence differs from the first three, but is visually closest to source handwriting style.
+
+Implication for next tuning:
+- Need better line/segment-level style consistency control (avoid sentence-to-sentence style drift).
+- Preserve current gains on confusion pairs while improving overall running-script accuracy.
+
 ### 🧪 Validation Log (2026-02-25)
 **Preset Test: `fidelity` (文字保真)**
 

@@ -323,10 +323,10 @@ def get_inference_profile(preset: str, variation_ratio: float, preset_version: s
             style_noise_strength = 0.0015 + variation_ratio * 0.008
             max_angle = 0.08 + variation_ratio * 0.45
         elif profile == "style":
-            guidance_scale = 4.0 + variation_ratio * 4.0
-            num_inference_step = 10 + int(variation_ratio * 10)
-            style_noise_strength = 0.022 + variation_ratio * 0.110
-            max_angle = 2.8 + variation_ratio * 9.0
+            guidance_scale = 6.4 + variation_ratio * 2.6
+            num_inference_step = 18 + int(variation_ratio * 12)
+            style_noise_strength = 0.008 + variation_ratio * 0.036
+            max_angle = 0.9 + variation_ratio * 2.4
         else:
             guidance_scale = 8.0 + variation_ratio * 4.5
             num_inference_step = 20 + int(variation_ratio * 12)
@@ -361,13 +361,13 @@ def get_inference_profile(preset: str, variation_ratio: float, preset_version: s
             punctuation_similarity_floor = 0.88
         else:
             punctuation_direct_render = False
-            fallback_to_content_simple = True
+            fallback_to_content_simple = False
             fallback_to_content_medium = False
-            min_similarity_simple = 0.68
+            min_similarity_simple = 0.0
             min_similarity_medium = 0.56
-            punctuation_noise_scale = 0.20
-            punctuation_angle_scale = 0.18
-            punctuation_similarity_floor = 0.82
+            punctuation_noise_scale = 0.85
+            punctuation_angle_scale = 0.75
+            punctuation_similarity_floor = 0.52
 
     elif version == "v2":
         if profile == "fidelity":
@@ -517,6 +517,8 @@ def _extract_feature_from_gray(gray_img: np.ndarray):
     vert_map = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel)
     horiz_strength = float(np.mean(horiz_map))
     vert_strength = float(np.mean(vert_map))
+    lower_start = int(binary.shape[0] * 0.62)
+    lower_horiz_strength = float(np.mean(horiz_map[lower_start:, :])) if lower_start < binary.shape[0] else horiz_strength
 
     return {
         "norm": norm,
@@ -524,6 +526,7 @@ def _extract_feature_from_gray(gray_img: np.ndarray):
         "comp_count": comp_count,
         "horiz_strength": horiz_strength,
         "vert_strength": vert_strength,
+        "lower_horiz_strength": lower_horiz_strength,
         "horizontal_bias": max(0.0, horiz_strength - vert_strength),
     }
 
@@ -618,27 +621,38 @@ def score_candidate(mask_np: np.ndarray, expected_feature: dict, complexity_leve
     vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 7))
     cand_horiz = float(np.mean(cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)))
     cand_vert = float(np.mean(cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel)))
+    lower_start = int(binary.shape[0] * 0.62)
+    cand_horiz_map = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel)
+    cand_lower_horiz = float(np.mean(cand_horiz_map[lower_start:, :])) if lower_start < binary.shape[0] else cand_horiz
 
     if complexity_level == "simple":
         ratio_weight = 3.0
         comp_weight = 0.8
-        horiz_weight = 2.4
+        horiz_weight = 4.0
+        overflow_weight = 2.6
     elif complexity_level == "medium":
         ratio_weight = 2.0
         comp_weight = 0.45
-        horiz_weight = 1.6
+        horiz_weight = 2.8
+        overflow_weight = 1.6
     else:
         ratio_weight = 1.0
         comp_weight = 0.2
         horiz_weight = 0.8
+        overflow_weight = 0.6
 
     horizontal_drift_penalty = 0.0
     if expected_feature.get("horizontal_bias", 0.0) > 0.02:
         horiz_drop = max(0.0, expected_feature["horiz_strength"] - cand_horiz)
         diagonal_tendency = max(0.0, cand_vert - expected_feature["vert_strength"]) * 0.5
-        horizontal_drift_penalty = horiz_weight * (horiz_drop + diagonal_tendency)
+        lower_horiz_drop = max(0.0, expected_feature.get("lower_horiz_strength", 0.0) - cand_lower_horiz)
+        horizontal_drift_penalty = horiz_weight * (horiz_drop + diagonal_tendency + lower_horiz_drop * 1.2)
 
-    return sim - (ratio_weight * ratio_gap) - (comp_weight * comp_gap) - horizontal_drift_penalty
+    overflow_penalty = 0.0
+    if ink_ratio > expected_feature["ink_ratio"]:
+        overflow_penalty = overflow_weight * (ink_ratio - expected_feature["ink_ratio"])
+
+    return sim - (ratio_weight * ratio_gap) - (comp_weight * comp_gap) - horizontal_drift_penalty - overflow_penalty
 
 
 def estimate_char_quality(expected_chars, generated_rgba_images, templates):
@@ -942,8 +956,7 @@ async def generate_text(request: GenerateRequest):
         generated_rgba_images = []
         
         # Generate each char
-        # Limit length for demo performance
-        text = request.text[:20] 
+        text = request.text
         
         for char_idx, char in enumerate(text):
             if not char.strip():
@@ -1053,6 +1066,11 @@ async def generate_text(request: GenerateRequest):
 
                 if profile["suppress_extra_strokes"]:
                     mask_np = apply_mask_cleanup(mask_np, local_kernel, local_min_area)
+
+                if profile["preset_version"] == "v3" and profile["preset"] == "style" and complexity_level in {"simple", "medium"}:
+                    gate_kernel = 7 if complexity_level == "simple" else 9
+                    envelope = cv2.dilate(content_mask_np, np.ones((gate_kernel, gate_kernel), np.uint8), iterations=1)
+                    mask_np = cv2.bitwise_and(mask_np, envelope)
 
                 white_canvas = Image.new("RGBA", generated_rgb.size, (255, 255, 255, 0))
                 white_canvas.putalpha(Image.fromarray(mask_np, mode="L"))
