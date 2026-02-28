@@ -1,10 +1,88 @@
 # AI Context & Progress Log
 
 > **Purpose**: This file maintains the continuity of the development context. Please read this first when starting a new session.
-> **Last Updated**: 2026-02-25 23:40 CST
+> **Last Updated**: 2026-02-28 23:20 CST
 
 ## 🚀 Project Status: Bug Fixes & Stability Phase
 Critical startup & training bugs fixed. Full training pipeline now working end-to-end. UI remains polished and functional.
+
+### 🌙 End-of-Day Wrap-up (2026-02-27)
+
+Session focus:
+- Shifted `Generate` page from "batch output viewer" to "writing-process preview" for upcoming stroke-level pipeline.
+- Confirmed product direction: final goal is article-level writing flow, auto stroke scoring, and auto retry/skip logic (no user per-stroke approval).
+
+Completed UI refactor (Generate page):
+1. Removed low-value controls for current stage:
+   - Removed `Inference Preset` and `Preset Version` from user-facing UI.
+   - Removed floating `Real-time Writing Parameters` panel.
+2. Moved paper template control to left sidebar and simplified options to two templates:
+   - `400 Grid Manuscript`
+   - `21-line Letter Paper` (lightweight illustrative mode, non-primary)
+3. Rebuilt preview area for writing workflow:
+   - Added scaffold-based writing surface with reference characters (衬字).
+   - Added status strip (current char / progress / stroke / score / retries / failed count).
+   - Added failed-character list for skip-and-analyze loop.
+4. 400-grid paper correctness pass:
+   - Fixed full-grid continuity and border closure issues.
+   - Enforced 20 columns per row.
+   - Pre-rendered full 400 slots even before generation.
+5. Interaction upgrade:
+   - Added zoom+pan usability for enlarged paper.
+   - Added hand tool button + space-hold temporary pan.
+   - Added pan boundary clamp and reset behavior.
+
+Known visual notes:
+- Reference-character size was reduced, but may still need minor per-template tuning.
+- `21-line Letter Paper` is intentionally minimal now; detailed realism is deferred.
+
+Next-session priority (2026-02-28):
+1. Integrate Make Me a Hanzi as the first stroke-order knowledge source.
+2. Build a minimal "see how the character is written" demo path (visual stroke sequence).
+3. Start backend contract for stroke-level scoring/threshold pass without changing the current article input UX.
+
+### 🔁 Deferred Mechanism Update (2026-02-28)
+
+During stroke-flow demo iteration, user requested a "discuss later" mechanism for intentionally skipped scope.
+
+Implemented policy in Generate demo:
+- Punctuation is now **auto-deferred** in stroke flow (no retry loop, no fail count inflation).
+- Deferred items are recorded in a dedicated UI section: **Deferred (Discuss Later)**.
+- Failed-character list remains focused on structural errors; deferred list is for planned-later items.
+
+Rationale:
+- Keeps main path focused on non-punctuation character correctness (primary pain point: wrong characters).
+- Prevents punctuation/no-stroke data from polluting failure analytics.
+
+### ⚙️ Stroke Pipeline Demo Milestone (2026-02-28)
+
+Major integration completed:
+- Added Make Me a Hanzi integration endpoint in backend (`/api/stroke_order`) with cache + local-first/remote-fallback behavior.
+- Connected Generate UI to live stroke-order data and stroke playback.
+- Added stroke-direction hints (start/end markers + direction trend text).
+
+UI/interaction updates during this milestone:
+- Generate page layout transitioned to writing-focused flow; removed nested-card visual clutter in status area.
+- Added hand-drag canvas navigation (button + space-hold pan) for zoomed paper workflow.
+- Added 400-grid and letter-paper templates with scaffold rendering for immediate visual context.
+
+Flow demo status:
+- Implemented `RUN STROKE FLOW (DEMO)` end-to-end control path:
+   - text -> char -> stroke loop
+   - per-stroke scoring -> retry -> pass/skip
+   - failed-character and deferred-item collection
+
+Scoring model direction (agreed with user):
+- Prioritize "do not write wrong characters" over rigid positional template fitting.
+- Use a two-level logic:
+   1. Correctness gate (`C`) as mandatory pass condition.
+   2. Style soft score (`S`) preserving writer individuality (fat/thin, high/low, slant differences).
+- Current implementation exposes `C / S / F` style of evaluation in demo status text.
+
+Training decision at this stage:
+- Do NOT retrain immediately before validating stroke-flow control loop.
+- Next hard phase: evaluate whether current whole-character training can support stable stroke-level attachment;
+   if not, move to stroke-aware supervision / retraining plan.
 
 ### 🌙 End-of-Day Wrap-up (2026-02-25)
 

@@ -5,12 +5,21 @@ setlocal enabledelayedexpansion
 title Handwriting Lab - One-Click Launcher
 
 :: Define Python Path
-if exist ".venv\Scripts\python.exe" (
+if exist ".env\Scripts\python.exe" (
+    echo [INFO] Found virtual environment. Using: .env\Scripts\python.exe
+    set "PYTHON_EXE=.env\Scripts\python.exe"
+) else if exist ".venv\Scripts\python.exe" (
     echo [INFO] Found virtual environment. Using: .venv\Scripts\python.exe
     set "PYTHON_EXE=.venv\Scripts\python.exe"
 ) else (
-    echo [WARNING] No .venv found. Trying system python...
-    set "PYTHON_EXE=python"
+    where py >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo [WARNING] No local virtual environment found. Trying launcher: py -3
+        set "PYTHON_EXE=py -3"
+    ) else (
+        echo [WARNING] No local virtual environment found. Trying system python...
+        set "PYTHON_EXE=python"
+    )
 )
 
 :: Check if python is available

@@ -1,6 +1,10 @@
 import os
+import json
+from threading import Lock
+from urllib.parse import quote
+from urllib.request import urlopen
 import uvicorn
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -296,6 +300,114 @@ from utils import ttf2im, is_char_in_font
 
 # Model Cache
 MODEL_CACHE = {}
+HANZI_DATA_DIR = os.path.join("web_ui", "static", "hanzi_data")
+os.makedirs(HANZI_DATA_DIR, exist_ok=True)
+HANZI_DATA_CACHE = {}
+HANZI_DATA_LOCK = Lock()
+
+
+def _candidate_hanzi_data_paths(char: str):
+    code = ord(char)
+    return [
+        os.path.join(HANZI_DATA_DIR, f"{char}.json"),
+        os.path.join(HANZI_DATA_DIR, f"{code:04x}.json"),
+        os.path.join(HANZI_DATA_DIR, f"U+{code:04X}.json"),
+    ]
+
+
+def _load_hanzi_payload(char: str):
+    if not char or len(char) != 1:
+        return None, "invalid_char"
+
+    with HANZI_DATA_LOCK:
+        if char in HANZI_DATA_CACHE:
+            return HANZI_DATA_CACHE[char], "cache"
+
+    # Local file first
+    for local_path in _candidate_hanzi_data_paths(char):
+        if os.path.exists(local_path):
+            try:
+                with open(local_path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                with HANZI_DATA_LOCK:
+                    HANZI_DATA_CACHE[char] = payload
+                return payload, "local"
+            except Exception:
+                pass
+
+    encoded_char = quote(char, safe="")
+    sources = [
+        f"https://cdn.jsdelivr.net/npm/hanzi-writer-data@latest/{encoded_char}.json",
+        f"https://unpkg.com/hanzi-writer-data@latest/{encoded_char}.json",
+    ]
+
+    for source_url in sources:
+        try:
+            with urlopen(source_url, timeout=6) as resp:
+                if resp.status != 200:
+                    continue
+                payload = json.loads(resp.read().decode("utf-8"))
+
+            with HANZI_DATA_LOCK:
+                HANZI_DATA_CACHE[char] = payload
+            return payload, "remote"
+        except Exception:
+            continue
+
+    return None, "not_found"
+
+
+@app.get("/api/stroke_order")
+async def get_stroke_order(char: str = Query(default=""), text: str = Query(default=""), max_chars: int = Query(default=20, ge=1, le=200)):
+    targets = []
+
+    if char:
+        targets = [char[0]]
+    elif text:
+        seen = set()
+        for current_char in text:
+            if not current_char.strip():
+                continue
+            if current_char in seen:
+                continue
+            seen.add(current_char)
+            targets.append(current_char)
+            if len(targets) >= max_chars:
+                break
+
+    if not targets:
+        return JSONResponse(content={"message": "Please provide char or text."}, status_code=400)
+
+    items = []
+    for index, current_char in enumerate(targets):
+        payload, source = _load_hanzi_payload(current_char)
+        if not payload:
+            items.append({
+                "index": index,
+                "char": current_char,
+                "available": False,
+                "stroke_count": 0,
+                "strokes": [],
+                "medians": [],
+                "source": source,
+                "error": "stroke_data_unavailable"
+            })
+            continue
+
+        strokes = payload.get("strokes") or []
+        medians = payload.get("medians") or []
+        items.append({
+            "index": index,
+            "char": current_char,
+            "available": True,
+            "stroke_count": len(strokes),
+            "strokes": strokes,
+            "medians": medians,
+            "source": source,
+            "character": payload.get("character", current_char)
+        })
+
+    return JSONResponse(content={"items": items})
 
 class GenerateRequest(BaseModel):
     text: str

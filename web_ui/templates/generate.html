@@ -43,18 +43,38 @@
         /* Custom paper texture effect */
         .paper-texture {
             background-color: #E6E6E6; /* Darker fallback */
-            background-image: 
-                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-image: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(232,232,232,0.92) 100%);
             box-shadow: inset 0 0 40px rgba(0,0,0,0.1);
         }
         .dark .paper-texture {
             background-color: #1A1D21; 
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-image: linear-gradient(180deg, rgba(28,32,40,0.98) 0%, rgba(20,24,32,0.98) 100%);
             opacity: 1;
+        }
+        .paper-preview-surface {
+            @apply relative w-full h-full overflow-y-auto custom-scrollbar p-5;
+        }
+        .paper-guide {
+            @apply absolute inset-5 rounded-md pointer-events-none;
+            opacity: 0.9;
+        }
+        .paper-guide-letter21 {
+            background-image: repeating-linear-gradient(
+                to bottom,
+                rgba(108, 108, 108, 0.35) 0,
+                rgba(108, 108, 108, 0.35) 1px,
+                transparent 1px,
+                transparent 33px
+            );
+        }
+        .dark .paper-guide-letter21 {
+            background-image: repeating-linear-gradient(
+                to bottom,
+                rgba(148, 163, 184, 0.24) 0,
+                rgba(148, 163, 184, 0.24) 1px,
+                transparent 1px,
+                transparent 33px
+            );
         }
         .custom-scrollbar::-webkit-scrollbar {
             width: 4px;
@@ -71,6 +91,137 @@
         }
         input[type="range"]::-webkit-slider-thumb {
             @apply appearance-none w-3 h-3 bg-lab-blue rounded-full cursor-pointer hover:ring-4 hover:ring-lab-blue/20 transition-all;
+        }
+        .writing-grid {
+            @apply relative z-10 w-full min-h-[420px] grid content-start;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .paper-grid-400 .writing-grid {
+            grid-template-columns: repeat(20, minmax(0, 1fr));
+            gap: 0;
+            border-left: 1px solid rgba(118, 118, 118, 0.42);
+            border-top: 1px solid rgba(118, 118, 118, 0.42);
+        }
+        .dark .paper-grid-400 .writing-grid {
+            border-left-color: rgba(148, 163, 184, 0.3);
+            border-top-color: rgba(148, 163, 184, 0.3);
+        }
+        .paper-letter-21 .writing-grid {
+            grid-template-columns: repeat(20, minmax(0, 1fr));
+            gap: 0;
+            grid-auto-rows: 34px;
+        }
+        .paper-letter-21 .writing-cell {
+            aspect-ratio: auto;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+        }
+        .dark .paper-letter-21 .writing-cell {
+            background: transparent;
+        }
+        .paper-grid-400 .writing-cell {
+            border: 0;
+            border-right: 1px solid rgba(118, 118, 118, 0.42);
+            border-bottom: 1px solid rgba(118, 118, 118, 0.42);
+            border-radius: 0;
+            background: transparent;
+            opacity: 1;
+        }
+        .dark .paper-grid-400 .writing-cell {
+            border-right-color: rgba(148, 163, 184, 0.3);
+            border-bottom-color: rgba(148, 163, 184, 0.3);
+        }
+        .writing-cell {
+            @apply relative aspect-square border rounded-xl overflow-hidden bg-white/40 dark:bg-black/10;
+            border-color: rgba(148, 163, 184, 0.35);
+        }
+        .writing-cell.state-pending {
+            @apply opacity-60;
+        }
+        .writing-cell.state-writing {
+            border-color: rgba(0, 163, 255, 0.6);
+            box-shadow: 0 0 0 2px rgba(0, 163, 255, 0.15);
+        }
+        .writing-cell.state-pass {
+            border-color: rgba(166, 255, 0, 0.6);
+        }
+        .writing-cell.state-fail {
+            border-color: rgba(248, 113, 113, 0.65);
+            background-color: rgba(127, 29, 29, 0.08);
+        }
+        .paper-letter-21 .writing-cell.state-pass {
+            box-shadow: inset 0 -2px 0 rgba(166, 255, 0, 0.72);
+        }
+        .paper-letter-21 .writing-cell.state-writing {
+            box-shadow: inset 0 -2px 0 rgba(0, 163, 255, 0.45);
+        }
+        .paper-letter-21 .writing-cell.state-fail {
+            box-shadow: inset 0 -2px 0 rgba(248, 113, 113, 0.72);
+            background-color: rgba(127, 29, 29, 0.06);
+        }
+        .paper-grid-400 .writing-cell.state-writing {
+            box-shadow: inset 0 0 0 2px rgba(0, 163, 255, 0.6);
+        }
+        .paper-grid-400 .writing-cell.state-pass {
+            box-shadow: inset 0 0 0 2px rgba(166, 255, 0, 0.68);
+        }
+        .paper-grid-400 .writing-cell.state-fail {
+            box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 0.72);
+        }
+        .writing-reference {
+            @apply absolute inset-0 flex items-center justify-center text-slate-400/55 dark:text-slate-500/45 select-none pointer-events-none;
+            font-size: clamp(1.3rem, 1.8vw, 1.8rem);
+            font-family: "Noto Serif SC", "Songti SC", serif;
+        }
+        .paper-letter-21 .writing-reference {
+            font-size: clamp(1rem, 1.2vw, 1.2rem);
+        }
+        .writing-glyph {
+            @apply absolute inset-0 flex items-center justify-center;
+        }
+        .writing-glyph img {
+            @apply w-[88%] h-[88%] object-contain;
+            filter: invert(1);
+        }
+        .paper-letter-21 .writing-glyph img {
+            width: 76%;
+            height: 76%;
+        }
+        .dark .writing-glyph img {
+            filter: none;
+        }
+        .stroke-demo-card {
+            @apply border border-lab-border rounded-lg bg-lab-bg/70 p-4 space-y-3;
+        }
+        .stroke-demo-overlay {
+            @apply p-0 bg-transparent border-0 rounded-none backdrop-blur-0;
+        }
+        .stroke-demo-svg {
+            @apply w-full h-24 bg-transparent border border-lab-border/60 rounded;
+        }
+        .stroke-path-base {
+            fill: rgba(148, 163, 184, 0.28);
+        }
+        .stroke-path-complete {
+            fill: rgba(0, 163, 255, 0.86);
+        }
+        .stroke-path-current {
+            fill: rgba(0, 163, 255, 0.98);
+        }
+        .stroke-median-line {
+            fill: none;
+            stroke: rgba(166, 255, 0, 0.95);
+            stroke-width: 32;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .stroke-median-start {
+            fill: rgba(250, 204, 21, 0.95);
+        }
+        .stroke-median-end {
+            fill: rgba(248, 113, 113, 0.95);
         }
     </style>
 </head>
@@ -139,44 +290,48 @@
 
                 <div class="space-y-3">
                     <div class="flex justify-between items-end">
-                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Inference Preset</label>
+                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Paper Settings</label>
                     </div>
                     <div class="relative">
-                        <select id="preset-select" class="w-full bg-lab-bg border border-lab-border rounded-lg px-4 py-3 text-sm font-mono text-white appearance-none focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none cursor-pointer">
-                            <option value="fidelity">Fidelity (文字保真)</option>
-                            <option value="balanced" selected>Balanced (平衡)</option>
-                            <option value="style">Style (风格优先)</option>
+                        <select id="paper-template" class="w-full bg-lab-bg border border-lab-border rounded-lg px-4 py-3 text-sm font-mono text-white appearance-none focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none cursor-pointer">
+                            <option value="grid400" selected>400 Grid Manuscript</option>
+                            <option value="letter21">21-line Letter Paper</option>
                         </select>
                         <div class="absolute right-3 top-3 pointer-events-none text-lab-muted">
-                            <span class="material-symbols-outlined text-sm">tune</span>
+                            <span class="material-symbols-outlined text-sm">article</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-3">
-                    <div class="flex justify-between items-end">
-                        <label class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Preset Version</label>
+                <div class="stroke-demo-card">
+                    <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-lab-muted">
+                        <span>Stroke Demo (Make Me a Hanzi)</span>
+                        <span id="stroke-source" class="text-lab-blue">idle</span>
                     </div>
-                    <div class="relative">
-                        <select id="preset-version-select" class="w-full bg-lab-bg border border-lab-border rounded-lg px-4 py-3 text-sm font-mono text-white appearance-none focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none cursor-pointer">
-                            <option value="v1" selected>v1 (Current baseline)</option>
-                            <option value="v2">v2 (Aggressive separation)</option>
-                            <option value="v3">v3 (Complexity-aware)</option>
+                    <div class="flex gap-2">
+                        <select id="stroke-char-select" class="flex-1 bg-lab-bg border border-lab-border rounded px-3 py-2 text-xs font-mono text-white focus:ring-1 focus:ring-lab-blue/50 focus:border-lab-blue outline-none">
+                            <option value="">No character</option>
                         </select>
-                        <div class="absolute right-3 top-3 pointer-events-none text-lab-muted">
-                            <span class="material-symbols-outlined text-sm">experiment</span>
-                        </div>
+                        <button id="stroke-play-btn" class="px-3 py-2 bg-lab-blue/90 hover:bg-lab-blue text-white rounded text-[11px] font-bold">PLAY</button>
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="text-[10px] text-lab-muted flex items-center justify-between gap-2">
+                            <span>Threshold</span>
+                            <input id="stroke-threshold" type="number" min="0.50" max="0.98" step="0.01" value="0.72" class="w-20 bg-lab-bg border border-lab-border rounded px-2 py-1 text-xs text-white" />
+                        </label>
+                        <label class="text-[10px] text-lab-muted flex items-center justify-between gap-2">
+                            <span>Max Retries</span>
+                            <input id="stroke-max-retries" type="number" min="0" max="6" step="1" value="2" class="w-20 bg-lab-bg border border-lab-border rounded px-2 py-1 text-xs text-white" />
+                        </label>
+                    </div>
+                    <button id="stroke-flow-btn" class="w-full px-3 py-2 bg-lab-green/90 hover:bg-lab-green text-black rounded text-[11px] font-bold">RUN STROKE FLOW (DEMO)</button>
+                    <div id="stroke-status" class="text-[10px] text-lab-muted">Select a character to preview stroke order.</div>
                 </div>
 
                 <!-- Run Button (Moved up) -->
                 <button id="run-btn" class="w-full bg-lab-green hover:bg-[#d9ff33] text-black font-bold py-4 rounded-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-lab-green/5">
                     <span class="material-symbols-outlined">analytics</span>
                     RUN SYNTHESIS ENGINE
-                </button>
-                <button id="compare-btn" class="w-full bg-lab-blue/90 hover:bg-lab-blue text-white font-bold py-3 rounded-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
-                    <span class="material-symbols-outlined">compare</span>
-                    A/B COMPARE (V0.20 vs V0.80)
                 </button>
 
                 <div class="border border-lab-border rounded-lg bg-lab-bg/70 p-4 space-y-3">
@@ -207,48 +362,26 @@
         <!-- Right Preview: Canvas -->
         <section class="flex-1 relative bg-lab-bg overflow-hidden flex flex-col">
             <!-- Canvas Container -->
-            <div class="absolute inset-0 flex items-center justify-center p-12 pb-32">
+            <div id="paper-viewport" class="absolute inset-0 flex items-center justify-center p-12 pb-32 overflow-hidden select-none">
                 <!-- Paper Sheet -->
-                <div id="paper-sheet" class="w-full max-w-4xl aspect-[1.4/1] paper-texture rounded shadow-2xl shadow-black/50 relative overflow-hidden flex items-center justify-center p-12 group transition-all">
-                    <div class="w-full h-full text-zinc-900 dark:text-zinc-300 overflow-y-auto custom-scrollbar p-8">
-                        <div id="output-text" class="leading-relaxed text-5xl opacity-90 select-none mix-blend-multiply dark:mix-blend-normal font-serif min-h-[200px] flex flex-wrap content-start gap-2 items-center">
-                            <!-- Generated content will appear here -->
+                <div id="paper-sheet" class="w-full max-w-4xl aspect-[1.4/1] paper-texture rounded shadow-2xl shadow-black/50 relative overflow-hidden flex flex-col p-6 group transition-all paper-grid-400">
+                    <div class="flex items-center justify-between px-3 pb-3 border-b border-black/10 dark:border-white/10">
+                        <div class="text-zinc-700 dark:text-zinc-300 text-[11px] font-mono uppercase tracking-wider">Writing Sheet Preview</div>
+                        <div class="text-zinc-500 dark:text-zinc-400 text-[10px] font-mono uppercase tracking-wider">Template follows left panel</div>
+                    </div>
+                    <div class="paper-preview-surface text-zinc-900 dark:text-zinc-300">
+                        <div id="paper-guide" class="paper-guide paper-guide-grid400"></div>
+                        <div id="writing-grid" class="writing-grid">
+                            <!-- Writing cells will appear here -->
                         </div>
                     </div>
                     
                     <!-- Paper Metadata -->
-                    <div class="absolute bottom-4 right-4 text-[9px] font-mono text-zinc-400 opacity-50">
-                        CANVAS: 2480 x 1754 px // 300DPI // RICE_PAPER_V2
+                    <div id="paper-meta" class="absolute bottom-4 right-4 text-[9px] font-mono text-zinc-400 opacity-60">
+                        TEMPLATE: 400_GRID // AUTO_SCORE: STROKE_LEVEL
                     </div>
                 </div>
-            </div>
 
-            <!-- Floating Refinement Toolbar (New) -->
-            <div class="absolute bottom-36 left-1/2 -translate-x-1/2 w-full max-w-xl z-20 flex flex-col gap-4 group">
-                <!-- Toolbar Body -->
-                <div class="bg-black/80 backdrop-blur-md border border-lab-border rounded-lg p-6 shadow-2xl transition-all duration-300 opacity-80 group-hover:opacity-100 hover:border-lab-blue/50">
-                    <div class="flex items-center justify-between text-[10px] font-mono uppercase text-lab-muted tracking-widest mb-4">
-                        <span>Real-time Synthesis Parameters</span>
-                        <span class="w-2 h-2 rounded-full bg-lab-green animate-pulse"></span>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-8">
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-[10px] font-mono uppercase text-white">
-                                <span>Dynamic Variation</span>
-                                <span class="text-lab-blue" id="val-variation">0.64</span>
-                            </div>
-                            <input id="range-variation" class="w-full" type="range" min="0" max="1" step="0.01" value="0.64">
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-[10px] font-mono uppercase text-white">
-                                <span>Ink Density</span>
-                                <span class="text-lab-blue" id="val-density">0.82</span>
-                            </div>
-                            <input id="range-density" class="w-full" type="range" min="0" max="100" value="82">
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Canvas Controls -->
@@ -259,6 +392,9 @@
                 <button onclick="zoom(-0.1)" class="p-2 bg-lab-card border border-lab-border rounded text-slate-400 hover:text-lab-blue transition-colors">
                     <span class="material-symbols-outlined">zoom_out</span>
                 </button>
+                <button id="hand-pan-btn" onclick="toggleHandMode()" class="p-2 bg-lab-card border border-lab-border rounded text-slate-400 hover:text-lab-blue transition-colors" title="Hand tool (Space to hold)">
+                    <span class="material-symbols-outlined">pan_tool</span>
+                </button>
                 <button onclick="resetZoom()" class="p-2 bg-lab-card border border-lab-border rounded text-slate-400 hover:text-lab-blue transition-colors">
                     <span class="material-symbols-outlined">fit_screen</span>
                 </button>
@@ -266,6 +402,61 @@
 
             <!-- Export Bar -->
             <div class="mt-auto p-6 bg-lab-card/80 backdrop-blur-sm border-t border-lab-border grid grid-cols-1 gap-4">
+                <div class="border border-lab-border rounded-xl bg-lab-bg/60 p-3 flex items-center gap-4">
+                    <div id="stroke-overlay" class="stroke-demo-overlay w-24 shrink-0">
+                        <div class="flex items-center justify-between mb-1 text-[9px] font-mono uppercase tracking-widest text-lab-muted">
+                            <span>Preview</span>
+                            <span id="stroke-overlay-char" class="text-lab-blue">--</span>
+                        </div>
+                        <svg id="stroke-demo-svg" class="stroke-demo-svg" viewBox="0 0 1024 1024" preserveAspectRatio="xMidYMid meet"></svg>
+                    </div>
+
+                    <div class="w-px self-stretch bg-lab-border/80"></div>
+
+                    <div class="flex-1 grid grid-cols-5 gap-2 text-center">
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-lab-muted">Progress</div>
+                            <div id="status-progress" class="text-sm font-bold text-white">0/0</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-lab-muted">Stroke</div>
+                            <div id="status-stroke" class="text-sm font-bold text-white">--</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-lab-muted">Score</div>
+                            <div id="status-score" class="text-sm font-bold text-white">--</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-lab-muted">Retries</div>
+                            <div id="status-retries" class="text-sm font-bold text-white">0</div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-lab-muted">Failed Chars</div>
+                            <div id="status-failed" class="text-sm font-bold text-red-300">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="stroke-step-info" class="text-[10px] text-slate-400 px-1">Waiting for stroke data...</div>
+
+                <div class="border border-lab-border rounded-xl bg-lab-bg/60 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-[10px] font-mono uppercase tracking-widest text-lab-muted">Failed Characters (Skipped for analysis)</div>
+                        <label class="text-[10px] text-lab-muted flex items-center gap-2">
+                            <input id="follow-current" type="checkbox" class="rounded border-lab-border bg-lab-bg text-lab-blue focus:ring-lab-blue/50" checked>
+                            Follow current char
+                        </label>
+                    </div>
+                    <div id="failed-list" class="max-h-24 overflow-y-auto custom-scrollbar text-[11px] text-slate-300">No failed characters.</div>
+                    <div class="mt-3 pt-3 border-t border-lab-border/70">
+                        <div class="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-lab-muted">
+                            <span>Deferred (Discuss Later)</span>
+                            <span id="deferred-count" class="text-lab-blue">0</span>
+                        </div>
+                        <div id="deferred-list" class="mt-2 max-h-16 overflow-y-auto custom-scrollbar text-[11px] text-slate-400">No deferred items.</div>
+                    </div>
+                </div>
+
                 <button onclick="exportPNG()" class="flex items-center justify-center gap-3 py-4 border border-lab-border rounded-xl text-slate-300 hover:bg-lab-bg hover:border-lab-blue/50 transition-all group">
                     <span class="material-symbols-outlined text-slate-500 group-hover:text-lab-blue">image</span>
                     <div class="text-left">
@@ -320,25 +511,64 @@
         // Character Counter
         const textInput = document.getElementById('text-input');
         const charCount = document.getElementById('char-count');
-        const outputText = document.getElementById('output-text');
+        const writingGrid = document.getElementById('writing-grid');
         const runBtn = document.getElementById('run-btn');
-        const compareBtn = document.getElementById('compare-btn');
-        const presetSelect = document.getElementById('preset-select');
-        const presetVersionSelect = document.getElementById('preset-version-select');
+        const paperViewport = document.getElementById('paper-viewport');
+        const paperSheet = document.getElementById('paper-sheet');
+        const handPanBtn = document.getElementById('hand-pan-btn');
+        const paperTemplate = document.getElementById('paper-template');
+        const paperGuide = document.getElementById('paper-guide');
+        const paperMeta = document.getElementById('paper-meta');
+        const statusProgress = document.getElementById('status-progress');
+        const statusStroke = document.getElementById('status-stroke');
+        const statusScore = document.getElementById('status-score');
+        const statusRetries = document.getElementById('status-retries');
+        const statusFailed = document.getElementById('status-failed');
+        const failedList = document.getElementById('failed-list');
+        const deferredCount = document.getElementById('deferred-count');
+        const deferredList = document.getElementById('deferred-list');
+        const followCurrent = document.getElementById('follow-current');
+        const DEFAULT_VARIATION = 0.64;
+        const DEFAULT_DENSITY = 82;
         const metricCer = document.getElementById('metric-cer');
         const metricAcc = document.getElementById('metric-acc');
         const metricErr = document.getElementById('metric-err');
         const metricMeta = document.getElementById('metric-meta');
         const metricMismatch = document.getElementById('metric-mismatch');
         const metricMethod = document.getElementById('quality-method');
+        const strokeCharSelect = document.getElementById('stroke-char-select');
+        const strokePlayBtn = document.getElementById('stroke-play-btn');
+        const strokeFlowBtn = document.getElementById('stroke-flow-btn');
+        const strokeThresholdInput = document.getElementById('stroke-threshold');
+        const strokeMaxRetriesInput = document.getElementById('stroke-max-retries');
+        const strokeStatus = document.getElementById('stroke-status');
+        const strokeSource = document.getElementById('stroke-source');
+        const strokeDemoSvg = document.getElementById('stroke-demo-svg');
+        const strokeOverlayChar = document.getElementById('stroke-overlay-char');
+        const strokeStepInfo = document.getElementById('stroke-step-info');
+
+        const writingState = {
+            visibleChars: [],
+            cursor: 0,
+            failedItems: [],
+            deferredItems: []
+        };
+
+        const strokeDemoState = {
+            dataByChar: new Map(),
+            playing: false,
+            playTimer: null,
+            flowRunning: false
+        };
+        const STROKE_PREVIEW_UP_OFFSET = 88;
+
+        let isGenerating = false;
 
         const qualitySummary = {
             evaluated: 0,
             errors: 0,
             confidenceWeightedSum: 0,
             mismatches: [],
-            preset: 'balanced',
-            presetVersion: 'v1',
             guidance: 0,
             steps: 0,
             variation: 0,
@@ -347,6 +577,10 @@
 
         textInput.addEventListener('input', () => {
             charCount.textContent = textInput.value.length;
+            refreshStrokeCharOptions();
+            if (!isGenerating) {
+                renderPreviewScaffold();
+            }
         });
 
         function resetQualityPanel(statusText = 'Waiting') {
@@ -354,8 +588,6 @@
             qualitySummary.errors = 0;
             qualitySummary.confidenceWeightedSum = 0;
             qualitySummary.mismatches = [];
-            qualitySummary.preset = presetSelect.value;
-            qualitySummary.presetVersion = presetVersionSelect.value;
             qualitySummary.guidance = 0;
             qualitySummary.steps = 0;
             qualitySummary.variation = 0;
@@ -382,8 +614,6 @@
             qualitySummary.errors += errors;
             qualitySummary.confidenceWeightedSum += (meanConfidence * evaluated);
             qualitySummary.method = quality.method || qualitySummary.method;
-            qualitySummary.preset = quality.preset || qualitySummary.preset;
-            qualitySummary.presetVersion = quality.preset_version || qualitySummary.presetVersion;
             qualitySummary.guidance = Number(quality.guidance_scale || qualitySummary.guidance || 0);
             qualitySummary.steps = Number(quality.steps || qualitySummary.steps || 0);
             qualitySummary.variation = Number(quality.variation || qualitySummary.variation || 0);
@@ -410,7 +640,7 @@
             metricCer.textContent = `${(cer * 100).toFixed(1)}%`;
             metricAcc.textContent = `${(acc * 100).toFixed(1)}%`;
             metricErr.textContent = `${qualitySummary.errors}/${qualitySummary.evaluated}`;
-            metricMeta.textContent = `Preset: ${qualitySummary.preset}/${qualitySummary.presetVersion} | Guidance: ${qualitySummary.guidance.toFixed(2)} | Steps: ${qualitySummary.steps} | Mean conf: ${conf.toFixed(2)}`;
+            metricMeta.textContent = `Guidance: ${qualitySummary.guidance.toFixed(2)} | Steps: ${qualitySummary.steps} | Mean conf: ${conf.toFixed(2)}`;
 
             if (qualitySummary.mismatches.length === 0) {
                 metricMismatch.textContent = 'No mismatches detected in current estimate.';
@@ -423,53 +653,646 @@
 
         resetQualityPanel();
 
-        function ensureOutputContainerReady() {
-            outputText.style.display = 'flex';
-            outputText.style.flexWrap = 'wrap';
-            outputText.style.gap = '8px';
-            outputText.style.alignContent = 'flex-start';
-            outputText.style.alignItems = 'center';
-            outputText.style.gridTemplateColumns = '';
+        function getVisibleChars(text) {
+            return Array.from(text).filter(ch => ch.trim().length > 0);
         }
 
-        function appendGeneratedImages(urls, target = outputText) {
-            urls.forEach(url => {
-                const img = document.createElement('img');
-                img.src = url;
-                img.className = "h-16 w-16 object-contain filter invert dark:filter-none";
-                target.appendChild(img);
+        function applyPaperTemplate(template) {
+            paperSheet.classList.remove('paper-grid-400', 'paper-letter-21');
+            if (template === 'letter21') {
+                paperSheet.classList.add('paper-letter-21');
+                paperGuide.classList.remove('hidden');
+                paperGuide.classList.add('paper-guide-letter21');
+                paperMeta.textContent = 'TEMPLATE: 21_LINE_LETTER // AUTO_SCORE: STROKE_LEVEL';
+            } else {
+                paperSheet.classList.add('paper-grid-400');
+                paperGuide.classList.add('hidden');
+                paperGuide.classList.remove('paper-guide-letter21');
+                paperMeta.textContent = 'TEMPLATE: 400_GRID // AUTO_SCORE: STROKE_LEVEL';
+            }
+        }
+
+        function getTemplateSlotCount(template) {
+            return template === 'grid400' ? 400 : 420;
+        }
+
+        function buildWritingSurface(visibleChars) {
+            const slotCount = Math.max(getTemplateSlotCount(paperTemplate.value), visibleChars.length);
+            writingState.visibleChars = visibleChars;
+            writingGrid.innerHTML = '';
+            for (let idx = 0; idx < slotCount; idx++) {
+                const char = visibleChars[idx] || '';
+                const cell = document.createElement('div');
+                cell.className = 'writing-cell state-pending';
+                cell.dataset.index = String(idx);
+                cell.innerHTML = `<div class="writing-reference">${char}</div><div class="writing-glyph"></div>`;
+                writingGrid.appendChild(cell);
+            }
+        }
+
+        function resetWritingSurface(visibleChars) {
+            writingState.cursor = 0;
+            writingState.failedItems = [];
+            writingState.deferredItems = [];
+            buildWritingSurface(visibleChars);
+            statusProgress.textContent = `0/${visibleChars.length}`;
+            statusStroke.textContent = '--';
+            statusScore.textContent = '--';
+            statusRetries.textContent = '0';
+            statusFailed.textContent = '0';
+            failedList.textContent = 'No failed characters.';
+            deferredCount.textContent = '0';
+            deferredList.textContent = 'No deferred items.';
+        }
+
+        function renderPreviewScaffold() {
+            const visibleChars = getVisibleChars(textInput.value);
+            buildWritingSurface(visibleChars);
+            statusProgress.textContent = `0/${visibleChars.length}`;
+        }
+
+        function refreshStrokeCharOptions() {
+            const chars = [];
+            const seen = new Set();
+            for (const ch of getVisibleChars(textInput.value)) {
+                if (seen.has(ch)) continue;
+                seen.add(ch);
+                chars.push(ch);
+                if (chars.length >= 40) break;
+            }
+
+            const current = strokeCharSelect.value;
+            strokeCharSelect.innerHTML = '';
+            if (chars.length === 0) {
+                strokeCharSelect.innerHTML = '<option value="">No character</option>';
+                strokeOverlayChar.textContent = '--';
+                strokeStepInfo.textContent = 'Waiting for stroke data...';
+                strokeDemoSvg.innerHTML = '';
+                return;
+            }
+
+            chars.forEach(ch => {
+                const opt = document.createElement('option');
+                opt.value = ch;
+                opt.textContent = ch;
+                strokeCharSelect.appendChild(opt);
+            });
+
+            if (current && chars.includes(current)) {
+                strokeCharSelect.value = current;
+            }
+        }
+
+        async function fetchStrokeDataForChar(char) {
+            if (!char) return null;
+            if (strokeDemoState.dataByChar.has(char)) {
+                return strokeDemoState.dataByChar.get(char);
+            }
+
+            const res = await fetch(`/api/stroke_order?char=${encodeURIComponent(char)}`);
+            const data = await res.json();
+            const item = Array.isArray(data.items) && data.items.length > 0 ? data.items[0] : null;
+            if (item) {
+                strokeDemoState.dataByChar.set(char, item);
+            }
+            return item;
+        }
+
+        function renderStrokeFrame(item, activeIndex = -1) {
+            strokeDemoSvg.innerHTML = '';
+            strokeOverlayChar.textContent = item?.char || '--';
+
+            if (!item || !item.available || !Array.isArray(item.strokes) || item.strokes.length === 0) {
+                strokeStepInfo.textContent = 'No stroke data for this character.';
+                strokeSource.textContent = item?.source || 'n/a';
+                return;
+            }
+
+            strokeSource.textContent = item.source || 'remote';
+            strokeStepInfo.textContent = activeIndex >= 0
+                ? `Stroke ${Math.min(activeIndex + 1, item.strokes.length)}/${item.strokes.length}`
+                : `Total strokes: ${item.strokes.length}`;
+
+            const strokeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            strokeGroup.setAttribute('transform', `translate(0, ${1024 - STROKE_PREVIEW_UP_OFFSET}) scale(1, -1)`);
+            strokeDemoSvg.appendChild(strokeGroup);
+
+            item.strokes.forEach((pathData, idx) => {
+                const base = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                base.setAttribute('d', pathData);
+                base.setAttribute('class', 'stroke-path-base');
+                strokeGroup.appendChild(base);
+
+                if (idx < activeIndex) {
+                    const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    highlight.setAttribute('d', pathData);
+                    highlight.setAttribute('class', 'stroke-path-complete');
+                    strokeGroup.appendChild(highlight);
+                } else if (idx === activeIndex) {
+                    const current = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    current.setAttribute('d', pathData);
+                    current.setAttribute('class', 'stroke-path-current');
+                    strokeGroup.appendChild(current);
+
+                    const medianPoints = Array.isArray(item.medians?.[idx]) ? item.medians[idx] : [];
+                    if (medianPoints.length >= 2) {
+                        const pointText = medianPoints.map(point => `${point[0]},${point[1]}`).join(' ');
+                        const medianPolyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                        medianPolyline.setAttribute('points', pointText);
+                        medianPolyline.setAttribute('class', 'stroke-median-line');
+                        strokeGroup.appendChild(medianPolyline);
+
+                        const startPoint = medianPoints[0];
+                        const endPoint = medianPoints[medianPoints.length - 1];
+
+                        const startDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        startDot.setAttribute('cx', String(startPoint[0]));
+                        startDot.setAttribute('cy', String(startPoint[1]));
+                        startDot.setAttribute('r', '26');
+                        startDot.setAttribute('class', 'stroke-median-start');
+                        strokeGroup.appendChild(startDot);
+
+                        const endDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        endDot.setAttribute('cx', String(endPoint[0]));
+                        endDot.setAttribute('cy', String(endPoint[1]));
+                        endDot.setAttribute('r', '22');
+                        endDot.setAttribute('class', 'stroke-median-end');
+                        strokeGroup.appendChild(endDot);
+
+                        const dx = endPoint[0] - startPoint[0];
+                        const dyScreen = startPoint[1] - endPoint[1];
+                        const horizontal = dx > 24 ? 'left→right' : (dx < -24 ? 'right→left' : 'horizontal-stable');
+                        const vertical = dyScreen > 24 ? 'top→bottom' : (dyScreen < -24 ? 'bottom→top' : 'vertical-stable');
+                        strokeStepInfo.textContent = `Stroke ${Math.min(activeIndex + 1, item.strokes.length)}/${item.strokes.length} · ${horizontal} · ${vertical}`;
+                    }
+                }
             });
         }
 
-        function createCompareLayout(leftLabel, rightLabel) {
-            outputText.innerHTML = '';
-            outputText.style.display = 'grid';
-            outputText.style.gridTemplateColumns = '1fr 1fr';
-            outputText.style.gap = '16px';
-            outputText.style.alignItems = 'start';
-            outputText.style.alignContent = 'start';
+        function stopStrokePlayback() {
+            strokeDemoState.playing = false;
+            if (strokeDemoState.playTimer) {
+                clearTimeout(strokeDemoState.playTimer);
+                strokeDemoState.playTimer = null;
+            }
+            strokePlayBtn.textContent = 'PLAY';
+        }
 
-            const createPanel = (label) => {
-                const panel = document.createElement('div');
-                panel.className = 'border border-lab-border rounded-lg bg-black/10 p-3 min-h-[220px]';
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
 
-                const title = document.createElement('div');
-                title.className = 'text-[10px] font-mono uppercase tracking-widest text-lab-blue mb-3';
-                title.textContent = label;
+        function pointDistance(a, b) {
+            return Math.hypot((a[0] || 0) - (b[0] || 0), (a[1] || 0) - (b[1] || 0));
+        }
 
-                const imagesWrap = document.createElement('div');
-                imagesWrap.className = 'flex flex-wrap gap-2 items-center content-start';
+        function polylineLength(points) {
+            if (!Array.isArray(points) || points.length < 2) return 0;
+            let total = 0;
+            for (let i = 1; i < points.length; i++) {
+                total += pointDistance(points[i - 1], points[i]);
+            }
+            return total;
+        }
 
-                panel.appendChild(title);
-                panel.appendChild(imagesWrap);
-                outputText.appendChild(panel);
-                return imagesWrap;
+        function resamplePolyline(points, targetCount = 12) {
+            if (!Array.isArray(points) || points.length === 0) return [];
+            if (points.length === 1) return Array.from({ length: targetCount }, () => [...points[0]]);
+
+            const segmentLengths = [];
+            let totalLength = 0;
+            for (let i = 1; i < points.length; i++) {
+                const segLen = pointDistance(points[i - 1], points[i]);
+                segmentLengths.push(segLen);
+                totalLength += segLen;
+            }
+            if (totalLength <= 1e-6) {
+                return Array.from({ length: targetCount }, () => [...points[0]]);
+            }
+
+            const sampled = [];
+            for (let k = 0; k < targetCount; k++) {
+                const targetDist = (k / Math.max(targetCount - 1, 1)) * totalLength;
+                let walked = 0;
+                let placed = false;
+
+                for (let i = 1; i < points.length; i++) {
+                    const segLen = segmentLengths[i - 1];
+                    if (walked + segLen >= targetDist) {
+                        const t = segLen > 1e-6 ? (targetDist - walked) / segLen : 0;
+                        const x = points[i - 1][0] + (points[i][0] - points[i - 1][0]) * t;
+                        const y = points[i - 1][1] + (points[i][1] - points[i - 1][1]) * t;
+                        sampled.push([x, y]);
+                        placed = true;
+                        break;
+                    }
+                    walked += segLen;
+                }
+
+                if (!placed) {
+                    sampled.push([...points[points.length - 1]]);
+                }
+            }
+            return sampled;
+        }
+
+        function buildStyleProfile(char) {
+            const code = char.codePointAt(0) || 0;
+            const hashA = (Math.sin(code * 0.017) + 1) / 2;
+            const hashB = (Math.sin(code * 0.031 + 1.7) + 1) / 2;
+            const hashC = (Math.sin(code * 0.043 + 2.9) + 1) / 2;
+            return {
+                scaleX: 0.86 + hashA * 0.32,
+                scaleY: 0.86 + hashB * 0.32,
+                slant: (hashC - 0.5) * 0.14,
+                baseNoise: 10 + hashB * 18
             };
+        }
+
+        function synthesizeCandidateMedian(referenceMedian, styleProfile, strokeIndex, retryIndex) {
+            if (!Array.isArray(referenceMedian) || referenceMedian.length < 2) return [];
+
+            const pts = resamplePolyline(referenceMedian, 12);
+            const cx = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
+            const cy = pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
+            const retryDecay = Math.max(0.32, 1 - retryIndex * 0.28);
+
+            return pts.map((p, idx) => {
+                const x0 = p[0] - cx;
+                const y0 = p[1] - cy;
+                const slantedX = x0 + y0 * styleProfile.slant;
+                const sx = slantedX * styleProfile.scaleX;
+                const sy = y0 * styleProfile.scaleY;
+
+                const localSeed = (strokeIndex + 1) * 37 + (idx + 1) * 13;
+                const jitterX = Math.sin(localSeed * 0.37) * styleProfile.baseNoise * retryDecay;
+                const jitterY = Math.cos(localSeed * 0.41) * styleProfile.baseNoise * retryDecay;
+
+                return [cx + sx + jitterX, cy + sy + jitterY];
+            });
+        }
+
+        function computeDirectionScore(refPts, candPts) {
+            if (refPts.length < 2 || candPts.length < 2) return 0.5;
+            const ra = refPts[0], rb = refPts[refPts.length - 1];
+            const ca = candPts[0], cb = candPts[candPts.length - 1];
+            const rvx = rb[0] - ra[0], rvy = rb[1] - ra[1];
+            const cvx = cb[0] - ca[0], cvy = cb[1] - ca[1];
+            const rnorm = Math.hypot(rvx, rvy), cnorm = Math.hypot(cvx, cvy);
+            if (rnorm < 1e-6 || cnorm < 1e-6) return 0.5;
+            const cos = (rvx * cvx + rvy * cvy) / (rnorm * cnorm);
+            return Math.max(0, Math.min(1, (cos + 1) / 2));
+        }
+
+        function computeLengthScore(refPts, candPts) {
+            const rl = polylineLength(refPts);
+            const cl = polylineLength(candPts);
+            if (rl < 1e-6 || cl < 1e-6) return 0.5;
+            const ratio = cl / rl;
+            return Math.max(0, 1 - Math.min(1, Math.abs(1 - ratio) / 0.55));
+        }
+
+        function computePositionScore(refPts, candPts) {
+            if (refPts.length === 0 || candPts.length === 0) return 0.5;
+            const rcx = refPts.reduce((sum, p) => sum + p[0], 0) / refPts.length;
+            const rcy = refPts.reduce((sum, p) => sum + p[1], 0) / refPts.length;
+            const ccx = candPts.reduce((sum, p) => sum + p[0], 0) / candPts.length;
+            const ccy = candPts.reduce((sum, p) => sum + p[1], 0) / candPts.length;
+            const d = Math.hypot(ccx - rcx, ccy - rcy);
+            return Math.max(0, 1 - Math.min(1, d / 180));
+        }
+
+        function computeShapeScore(refPts, candPts) {
+            if (refPts.length === 0 || candPts.length === 0) return 0.5;
+            const count = Math.min(refPts.length, candPts.length);
+            let sum = 0;
+            for (let i = 0; i < count; i++) {
+                sum += pointDistance(refPts[i], candPts[i]);
+            }
+            const mean = sum / Math.max(count, 1);
+            return Math.max(0, 1 - Math.min(1, mean / 170));
+        }
+
+        function evaluateStrokeQuality(referenceMedian, candidateMedian) {
+            const refPts = resamplePolyline(referenceMedian, 12);
+            const candPts = resamplePolyline(candidateMedian, 12);
+
+            const pos = computePositionScore(refPts, candPts);
+            const dir = computeDirectionScore(refPts, candPts);
+            const len = computeLengthScore(refPts, candPts);
+            const shape = computeShapeScore(refPts, candPts);
+
+            const correctness = 0.55 * dir + 0.30 * len + 0.15 * shape;
+            const style = 0.50 * shape + 0.30 * pos + 0.20 * dir;
+            const final = 0.75 * correctness + 0.25 * style;
 
             return {
-                leftContainer: createPanel(leftLabel),
-                rightContainer: createPanel(rightLabel)
+                correctness: Math.max(0, Math.min(1, correctness)),
+                style: Math.max(0, Math.min(1, style)),
+                final: Math.max(0, Math.min(1, final)),
+                components: { pos, dir, len, shape }
             };
+        }
+
+        function setDemoButtonsBusy(busy) {
+            if (busy) {
+                strokeFlowBtn.classList.add('opacity-70', 'pointer-events-none');
+                strokePlayBtn.classList.add('opacity-70', 'pointer-events-none');
+                runBtn.classList.add('opacity-70', 'pointer-events-none');
+            } else {
+                strokeFlowBtn.classList.remove('opacity-70', 'pointer-events-none');
+                strokePlayBtn.classList.remove('opacity-70', 'pointer-events-none');
+                runBtn.classList.remove('opacity-70', 'pointer-events-none');
+            }
+        }
+
+        function isPunctuationChar(ch) {
+            if (!ch || !ch.trim()) return false;
+            return /[\p{P}\p{S}]/u.test(ch);
+        }
+
+        function pushFailedChar(char, index, reason) {
+            writingState.failedItems.push({ char, index, reason });
+            failedList.innerHTML = writingState.failedItems
+                .slice(-20)
+                .map(item => `#${item.index} ${item.char} · ${item.reason}`)
+                .join('<br>');
+            statusFailed.textContent = String(writingState.failedItems.length);
+        }
+
+        function pushDeferredChar(char, index, reason) {
+            writingState.deferredItems.push({ char, index, reason });
+            deferredCount.textContent = String(writingState.deferredItems.length);
+            deferredList.innerHTML = writingState.deferredItems
+                .slice(-20)
+                .map(item => `#${item.index} ${item.char} · ${item.reason}`)
+                .join('<br>');
+        }
+
+        async function runStrokeFlowDemo() {
+            if (strokeDemoState.flowRunning) {
+                strokeStatus.textContent = 'Stroke flow is already running.';
+                return;
+            }
+
+            const visibleChars = getVisibleChars(textInput.value);
+            if (visibleChars.length === 0) {
+                strokeStatus.textContent = 'Please input text first.';
+                return;
+            }
+
+            const threshold = Math.max(0.5, Math.min(0.98, Number(strokeThresholdInput.value || 0.72)));
+            const maxRetries = Math.max(0, Math.min(6, parseInt(strokeMaxRetriesInput.value || '2', 10)));
+            const correctnessGate = Math.max(0.66, threshold - 0.08);
+
+            strokeDemoState.flowRunning = true;
+            stopStrokePlayback();
+            setDemoButtonsBusy(true);
+            strokeFlowBtn.textContent = 'RUNNING...';
+
+            resetWritingSurface(visibleChars);
+            strokeStatus.textContent = `Flow started · threshold ${threshold.toFixed(2)} · gate(C) ${correctnessGate.toFixed(2)} · retries ${maxRetries}`;
+
+            let progressIndex = 0;
+
+            try {
+                for (let charIndex = 0; charIndex < visibleChars.length; charIndex++) {
+                    const char = visibleChars[charIndex];
+                    const styleProfile = buildStyleProfile(char);
+                    const cell = writingGrid.querySelector(`[data-index="${charIndex}"]`);
+                    if (cell) {
+                        cell.classList.remove('state-pending', 'state-pass', 'state-fail');
+                        cell.classList.add('state-writing');
+                        if (followCurrent.checked) {
+                            cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                        }
+                    }
+
+                    if (isPunctuationChar(char)) {
+                        progressIndex += 1;
+                        writingState.cursor = progressIndex;
+                        if (cell) {
+                            cell.classList.remove('state-writing');
+                            cell.classList.add('state-pass');
+                        }
+                        pushDeferredChar(char, charIndex + 1, 'Punctuation deferred');
+                        strokeStatus.textContent = `${char} deferred (punctuation)`;
+                        updateWritingStatus({
+                            cursor: progressIndex,
+                            score: null,
+                            retries: 0,
+                            strokeLabel: 'defer'
+                        });
+                        await sleep(80);
+                        continue;
+                    }
+
+                    const item = await fetchStrokeDataForChar(char);
+                    if (!item || !item.available || !Array.isArray(item.strokes) || item.strokes.length === 0) {
+                        if (cell) {
+                            cell.classList.remove('state-writing');
+                            cell.classList.add('state-fail');
+                        }
+                        pushFailedChar(char, charIndex + 1, 'No stroke data');
+                        updateWritingStatus({ cursor: progressIndex, score: 0, retries: 0, strokeLabel: 'no-data' });
+                        continue;
+                    }
+
+                    let charPassed = true;
+                    for (let strokeIndex = 0; strokeIndex < item.strokes.length; strokeIndex++) {
+                        const referenceMedian = Array.isArray(item.medians?.[strokeIndex]) ? item.medians[strokeIndex] : [];
+                        if (referenceMedian.length < 2) {
+                            charPassed = false;
+                            if (cell) {
+                                cell.classList.remove('state-writing');
+                                cell.classList.add('state-fail');
+                            }
+                            pushFailedChar(char, charIndex + 1, `Stroke ${strokeIndex + 1} missing median`);
+                            strokeStatus.textContent = `${char} skipped (stroke data incomplete)`;
+                            break;
+                        }
+
+                        let passed = false;
+                        for (let retry = 0; retry <= maxRetries; retry++) {
+                            const candidateMedian = synthesizeCandidateMedian(referenceMedian, styleProfile, strokeIndex, retry);
+                            const quality = evaluateStrokeQuality(referenceMedian, candidateMedian);
+                            const gatePassed = quality.correctness >= correctnessGate;
+                            const finalPassed = quality.final >= threshold;
+
+                            renderStrokeFrame(item, strokeIndex);
+                            strokeStatus.textContent = `${char} · stroke ${strokeIndex + 1}/${item.strokes.length} · try ${retry + 1} · C ${quality.correctness.toFixed(2)} / S ${quality.style.toFixed(2)} / F ${quality.final.toFixed(2)}`;
+                            updateWritingStatus({
+                                cursor: progressIndex,
+                                score: quality.final,
+                                retries: retry,
+                                strokeLabel: `${strokeIndex + 1}/${item.strokes.length}`
+                            });
+
+                            await sleep(240);
+                            if (gatePassed && finalPassed) {
+                                passed = true;
+                                break;
+                            }
+                        }
+
+                        if (!passed) {
+                            charPassed = false;
+                            if (cell) {
+                                cell.classList.remove('state-writing');
+                                cell.classList.add('state-fail');
+                            }
+                            pushFailedChar(char, charIndex + 1, `Stroke ${strokeIndex + 1} below threshold`);
+                            strokeStatus.textContent = `${char} skipped (stroke ${strokeIndex + 1} failed)`;
+                            break;
+                        }
+                    }
+
+                    if (charPassed) {
+                        progressIndex += 1;
+                        writingState.cursor = progressIndex;
+                        if (cell) {
+                            cell.classList.remove('state-writing');
+                            cell.classList.add('state-pass');
+                        }
+                    }
+
+                    updateWritingStatus({
+                        cursor: progressIndex,
+                        score: null,
+                        retries: 0,
+                        strokeLabel: charPassed ? 'pass' : 'skip'
+                    });
+
+                    await sleep(120);
+                }
+
+                strokeStatus.textContent = `Flow complete · pass ${progressIndex}/${visibleChars.length} · failed ${writingState.failedItems.length}`;
+                strokeFlowBtn.textContent = 'FLOW COMPLETE';
+            } catch (err) {
+                console.error(err);
+                strokeStatus.textContent = `Flow failed: ${err?.message || 'unknown error'}`;
+                strokeFlowBtn.textContent = 'FLOW FAILED';
+            } finally {
+                strokeDemoState.flowRunning = false;
+                setDemoButtonsBusy(false);
+                setTimeout(() => {
+                    strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)';
+                }, 900);
+            }
+        }
+
+        async function previewSelectedStrokeChar(play = false) {
+            const char = strokeCharSelect.value;
+            if (!char) {
+                strokeStatus.textContent = 'No character selected.';
+                return;
+            }
+
+            strokeStatus.textContent = `Loading stroke data for ${char}...`;
+            const item = await fetchStrokeDataForChar(char);
+            if (!item || !item.available) {
+                stopStrokePlayback();
+                renderStrokeFrame(item, -1);
+                strokeStatus.textContent = `No Make Me a Hanzi data for ${char}.`;
+                return;
+            }
+
+            if (!play) {
+                stopStrokePlayback();
+                renderStrokeFrame(item, -1);
+                strokeStatus.textContent = `${char}: ${item.stroke_count} strokes ready.`;
+                return;
+            }
+
+            if (strokeDemoState.playing) {
+                stopStrokePlayback();
+                renderStrokeFrame(item, -1);
+                strokeStatus.textContent = 'Playback stopped.';
+                return;
+            }
+
+            strokeDemoState.playing = true;
+            strokePlayBtn.textContent = 'STOP';
+            strokeStatus.textContent = `Playing ${char} stroke order...`;
+
+            let step = 0;
+            const playStep = () => {
+                if (!strokeDemoState.playing) return;
+                renderStrokeFrame(item, step);
+                step += 1;
+                if (step < item.strokes.length) {
+                    strokeDemoState.playTimer = setTimeout(playStep, 420);
+                } else {
+                    stopStrokePlayback();
+                    strokeStatus.textContent = `${char} stroke playback finished.`;
+                }
+            };
+
+            renderStrokeFrame(item, -1);
+            strokeDemoState.playTimer = setTimeout(playStep, 180);
+        }
+
+        function updateWritingStatus({ cursor = 0, score = null, retries = 0, strokeLabel = '--' } = {}) {
+            const total = writingState.visibleChars.length;
+            statusProgress.textContent = `${Math.min(cursor, total)}/${total}`;
+            statusStroke.textContent = strokeLabel;
+            statusScore.textContent = score === null ? '--' : Number(score).toFixed(2);
+            statusRetries.textContent = String(retries || 0);
+            statusFailed.textContent = String(writingState.failedItems.length);
+        }
+
+        function appendGeneratedGlyphCells(urls, chars, startIndex, data) {
+            const score = data?.stroke_eval?.score ?? data?.quality?.mean_confidence ?? null;
+            const strokeLabel = data?.stroke_eval?.stroke_label || '--';
+            const retries = data?.stroke_eval?.retries || 0;
+            const failed = [];
+
+            urls.forEach((url, localIdx) => {
+                const globalIdx = startIndex + localIdx;
+                const cell = writingGrid.querySelector(`[data-index="${globalIdx}"]`);
+                if (!cell) return;
+
+                cell.classList.remove('state-pending', 'state-writing', 'state-pass', 'state-fail');
+                cell.classList.add('state-writing');
+
+                const glyphWrap = cell.querySelector('.writing-glyph');
+                glyphWrap.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'glyph-img';
+                glyphWrap.appendChild(img);
+
+                const mismatchHit = Array.isArray(data?.quality?.mismatches) && data.quality.mismatches.some(item => Number(item.pos) === localIdx);
+                if (mismatchHit) {
+                    cell.classList.remove('state-writing');
+                    cell.classList.add('state-fail');
+                    failed.push({ char: chars[localIdx] || '?', index: globalIdx + 1, reason: 'Position trend mismatch' });
+                } else {
+                    cell.classList.remove('state-writing');
+                    cell.classList.add('state-pass');
+                }
+
+                if (followCurrent.checked) {
+                    cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                }
+
+                writingState.cursor = globalIdx + 1;
+            });
+
+            if (failed.length > 0) {
+                writingState.failedItems.push(...failed);
+                failedList.innerHTML = writingState.failedItems
+                    .slice(-20)
+                    .map(item => `#${item.index} ${item.char} · ${item.reason}`)
+                    .join('<br>');
+            }
+
+            updateWritingStatus({
+                cursor: writingState.cursor,
+                score,
+                retries,
+                strokeLabel
+            });
         }
 
         function splitTextIntoChunks(text, chunkSize) {
@@ -482,16 +1305,15 @@
         }
 
         function setButtonsBusy(isBusy) {
+            isGenerating = isBusy;
             if (isBusy) {
                 runBtn.classList.add('opacity-75', 'pointer-events-none');
-                compareBtn.classList.add('opacity-75', 'pointer-events-none');
             } else {
                 runBtn.classList.remove('opacity-75', 'pointer-events-none');
-                compareBtn.classList.remove('opacity-75', 'pointer-events-none');
             }
         }
 
-        async function generateChunks({ chunks, style, variation, density, preset, presetVersion, onProgress, onChunkDone }) {
+        async function generateChunks({ chunks, style, variation, density, onProgress, onChunkDone }) {
             let visibleOffset = 0;
             for (let i = 0; i < chunks.length; i++) {
                 if (onProgress) {
@@ -500,7 +1322,8 @@
 
                 const chunkText = chunks[i];
                 const chunkOffset = visibleOffset;
-                visibleOffset += Array.from(chunkText).filter(ch => ch.trim().length > 0).length;
+                const chunkVisibleChars = getVisibleChars(chunkText);
+                visibleOffset += chunkVisibleChars.length;
 
                 const res = await fetch('/api/generate', {
                     method: 'POST',
@@ -510,9 +1333,7 @@
                         style_dir: style,
                         variation: parseFloat(variation),
                         density: parseInt(density),
-                        chunk_index: i,
-                        preset: preset,
-                        preset_version: presetVersion
+                        chunk_index: i
                     })
                 });
 
@@ -522,7 +1343,7 @@
                 }
 
                 if (onChunkDone) {
-                    onChunkDone(data, { chunkIndex: i, chunkOffset, chunkText });
+                    onChunkDone(data, { chunkIndex: i, chunkOffset, chunkText, chunkVisibleChars });
                 }
             }
         }
@@ -531,10 +1352,8 @@
         runBtn.addEventListener('click', async () => {
             const text = textInput.value;
             const style = styleSelect.value;
-            const variation = rangeVariation.value;
-            const density = rangeDensity.value;
-            const preset = presetSelect.value;
-            const presetVersion = presetVersionSelect.value;
+            const variation = DEFAULT_VARIATION;
+            const density = DEFAULT_DENSITY;
             
             if (!style) {
                 alert('Please select a font style first.');
@@ -549,9 +1368,9 @@
             runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING 0%...`;
             setButtonsBusy(true);
 
-            outputText.innerHTML = '';
-            ensureOutputContainerReady();
             resetQualityPanel('Running');
+            const visibleChars = getVisibleChars(text);
+            resetWritingSurface(visibleChars);
 
             const chunkSize = 6;
             const chunks = splitTextIntoChunks(text, chunkSize).filter(chunk => chunk.trim().length > 0);
@@ -569,14 +1388,12 @@
                     style,
                     variation,
                     density,
-                    preset,
-                    presetVersion,
                     onProgress: (index, total) => {
                         const progress = Math.round((index / total) * 100);
                         runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> SYNTHESIZING ${progress}% (${index + 1}/${total})`;
                     },
                     onChunkDone: (data, context) => {
-                        appendGeneratedImages(data.images);
+                        appendGeneratedGlyphCells(data.images, context.chunkVisibleChars, context.chunkOffset, data);
                         mergeQualityMetrics(data.quality, context.chunkOffset);
                     }
                 });
@@ -591,109 +1408,218 @@
             }
         });
 
-        compareBtn.addEventListener('click', async () => {
-            const text = textInput.value;
-            const style = styleSelect.value;
-            const density = rangeDensity.value;
-            const preset = presetSelect.value;
-            const presetVersion = presetVersionSelect.value;
-            const variationA = 0.20;
-            const variationB = 0.80;
-
-            if (!style) {
-                alert('Please select a font style first.');
-                return;
+        paperTemplate.addEventListener('change', (e) => {
+            applyPaperTemplate(e.target.value);
+            if (!isGenerating) {
+                renderPreviewScaffold();
             }
-            if (!text.trim()) {
-                alert('Please enter some text.');
-                return;
-            }
+        });
 
-            const originalCompareText = compareBtn.innerHTML;
-            compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING 0%...`;
-            setButtonsBusy(true);
-            resetQualityPanel('A/B Debug');
-            metricMeta.textContent = 'A/B compare keeps metrics for visual tuning; use RUN for final CER estimate.';
-
-            const chunkSize = 6;
-            const chunks = splitTextIntoChunks(text, chunkSize).filter(chunk => chunk.trim().length > 0);
-            if (chunks.length === 0) {
-                alert('Please enter visible characters.');
-                compareBtn.innerHTML = originalCompareText;
-                setButtonsBusy(false);
-                return;
-            }
-
-            const { leftContainer, rightContainer } = createCompareLayout(`A: Variation ${variationA.toFixed(2)}`, `B: Variation ${variationB.toFixed(2)}`);
-
-            try {
-                await generateChunks({
-                    chunks,
-                    style,
-                    variation: variationA,
-                    density,
-                    preset,
-                    presetVersion,
-                    onProgress: (index, total) => {
-                        const overall = Math.round((index / (total * 2)) * 100);
-                        compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING ${overall}% (A ${index + 1}/${total})`;
-                    },
-                    onChunkDone: (data) => appendGeneratedImages(data.images, leftContainer)
-                });
-
-                await generateChunks({
-                    chunks,
-                    style,
-                    variation: variationB,
-                    density,
-                    preset,
-                    presetVersion,
-                    onProgress: (index, total) => {
-                        const overall = Math.round(((total + index) / (total * 2)) * 100);
-                        compareBtn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span> COMPARING ${overall}% (B ${index + 1}/${total})`;
-                    },
-                    onChunkDone: (data) => appendGeneratedImages(data.images, rightContainer)
-                });
-
-                compareBtn.innerHTML = `<span class="material-symbols-outlined">check_circle</span> A/B READY`;
-            } catch (err) {
+        applyPaperTemplate(paperTemplate.value);
+        renderPreviewScaffold();
+        refreshStrokeCharOptions();
+        if (strokeCharSelect.value) {
+            previewSelectedStrokeChar(false).catch(err => {
                 console.error(err);
-                alert('A/B compare failed: ' + (err.message || 'Network error during synthesis'));
-            } finally {
-                compareBtn.innerHTML = originalCompareText;
-                setButtonsBusy(false);
-            }
+                strokeStatus.textContent = 'Failed to load stroke preview.';
+            });
+        }
+
+        strokeCharSelect.addEventListener('change', () => {
+            previewSelectedStrokeChar(false).catch(err => {
+                console.error(err);
+                strokeStatus.textContent = 'Failed to load stroke preview.';
+            });
         });
 
-        // Sliders
-        const rangeVariation = document.getElementById('range-variation');
-        const valVariation = document.getElementById('val-variation');
-        rangeVariation.addEventListener('input', (e) => {
-            valVariation.textContent = Number(e.target.value).toFixed(2);
+        strokePlayBtn.addEventListener('click', () => {
+            previewSelectedStrokeChar(true).catch(err => {
+                console.error(err);
+                stopStrokePlayback();
+                strokeStatus.textContent = 'Stroke playback failed.';
+            });
         });
 
-        const rangeDensity = document.getElementById('range-density');
-        const valDensity = document.getElementById('val-density');
-        rangeDensity.addEventListener('input', (e) => {
-            valDensity.textContent = (e.target.value / 100).toFixed(2);
-            // Simulate effect
-            outputText.style.opacity = e.target.value / 100;
+        strokeFlowBtn.addEventListener('click', () => {
+            runStrokeFlowDemo().catch(err => {
+                console.error(err);
+                strokeDemoState.flowRunning = false;
+                setDemoButtonsBusy(false);
+                strokeStatus.textContent = 'Flow runner crashed unexpectedly.';
+                strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)';
+            });
         });
 
         // Zoom Logic
         let currentZoom = 1;
-        const paperSheet = document.getElementById('paper-sheet');
+        let panOffsetX = 0;
+        let panOffsetY = 0;
+        let handModeEnabled = false;
+        let spacePanEnabled = false;
+        let draggingPaper = false;
+        let activePointerId = null;
+        const panStart = { x: 0, y: 0, ox: 0, oy: 0 };
+
+        function isEditableTarget(target) {
+            if (!target) return false;
+            const tag = (target.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || target.isContentEditable;
+        }
+
+        function isPanAvailable() {
+            return handModeEnabled || spacePanEnabled || currentZoom > 1.01;
+        }
+
+        function updatePanCursor() {
+            if (draggingPaper) {
+                paperViewport.style.cursor = 'grabbing';
+            } else if (isPanAvailable()) {
+                paperViewport.style.cursor = 'grab';
+            } else {
+                paperViewport.style.cursor = 'default';
+            }
+
+            if (handModeEnabled) {
+                handPanBtn.classList.add('text-lab-blue', 'border-lab-blue/60', 'bg-lab-blue/10');
+            } else {
+                handPanBtn.classList.remove('text-lab-blue', 'border-lab-blue/60', 'bg-lab-blue/10');
+            }
+        }
+
+        function clampPanOffsets(x, y) {
+            const viewportRect = paperViewport.getBoundingClientRect();
+            const baseWidth = paperSheet.offsetWidth;
+            const baseHeight = paperSheet.offsetHeight;
+            const scaledWidth = baseWidth * currentZoom;
+            const scaledHeight = baseHeight * currentZoom;
+
+            const maxX = Math.max(0, (scaledWidth - viewportRect.width) / 2);
+            const maxY = Math.max(0, (scaledHeight - viewportRect.height) / 2);
+
+            return {
+                x: Math.max(-maxX, Math.min(maxX, x)),
+                y: Math.max(-maxY, Math.min(maxY, y))
+            };
+        }
+
+        function applyPaperTransform() {
+            const clamped = clampPanOffsets(panOffsetX, panOffsetY);
+            panOffsetX = clamped.x;
+            panOffsetY = clamped.y;
+            paperSheet.style.transformOrigin = 'center center';
+            paperSheet.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px) scale(${currentZoom})`;
+            updatePanCursor();
+        }
+
+        function startPaperDrag(clientX, clientY, pointerId = null) {
+            if (!isPanAvailable()) return;
+            draggingPaper = true;
+            activePointerId = pointerId;
+            panStart.x = clientX;
+            panStart.y = clientY;
+            panStart.ox = panOffsetX;
+            panStart.oy = panOffsetY;
+            updatePanCursor();
+        }
+
+        function movePaperDrag(clientX, clientY) {
+            if (!draggingPaper) return;
+            panOffsetX = panStart.ox + (clientX - panStart.x);
+            panOffsetY = panStart.oy + (clientY - panStart.y);
+            applyPaperTransform();
+        }
+
+        function endPaperDrag() {
+            draggingPaper = false;
+            activePointerId = null;
+            updatePanCursor();
+        }
+
+        function toggleHandMode() {
+            handModeEnabled = !handModeEnabled;
+            updatePanCursor();
+        }
+        
         
         function zoom(delta) {
             currentZoom += delta;
             currentZoom = Math.max(0.5, Math.min(2, currentZoom));
-            paperSheet.style.transform = `scale(${currentZoom})`;
+            if (currentZoom <= 1.01) {
+                panOffsetX = 0;
+                panOffsetY = 0;
+            }
+            applyPaperTransform();
         }
         
         function resetZoom() {
             currentZoom = 1;
-            paperSheet.style.transform = `scale(1)`;
+            panOffsetX = 0;
+            panOffsetY = 0;
+            applyPaperTransform();
         }
+
+        paperViewport.addEventListener('mousedown', (event) => {
+            if (event.button !== 0) return;
+            if (!event.target.closest('#paper-sheet')) return;
+            if (!isPanAvailable()) return;
+            event.preventDefault();
+            startPaperDrag(event.clientX, event.clientY);
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            movePaperDrag(event.clientX, event.clientY);
+        });
+
+        window.addEventListener('mouseup', () => {
+            endPaperDrag();
+        });
+
+        paperViewport.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'mouse') return;
+            if (!event.target.closest('#paper-sheet')) return;
+            if (!isPanAvailable()) return;
+            event.preventDefault();
+            paperViewport.setPointerCapture(event.pointerId);
+            startPaperDrag(event.clientX, event.clientY, event.pointerId);
+        });
+
+        paperViewport.addEventListener('pointermove', (event) => {
+            if (activePointerId !== event.pointerId) return;
+            movePaperDrag(event.clientX, event.clientY);
+        });
+
+        paperViewport.addEventListener('pointerup', (event) => {
+            if (activePointerId === event.pointerId) {
+                endPaperDrag();
+            }
+        });
+
+        window.addEventListener('keydown', (event) => {
+            if (event.code !== 'Space') return;
+            if (isEditableTarget(event.target)) return;
+            if (!spacePanEnabled) {
+                event.preventDefault();
+                spacePanEnabled = true;
+                updatePanCursor();
+            }
+        });
+
+        window.addEventListener('keyup', (event) => {
+            if (event.code !== 'Space') return;
+            spacePanEnabled = false;
+            updatePanCursor();
+        });
+
+        window.addEventListener('blur', () => {
+            spacePanEnabled = false;
+            endPaperDrag();
+        });
+
+        window.addEventListener('resize', () => {
+            applyPaperTransform();
+        });
+
+        applyPaperTransform();
 
         // Style Management
         const styleSelect = document.getElementById('style-select');
@@ -724,29 +1650,23 @@
                 styleSelect.innerHTML = '<option value="">No styles found</option>';
                 // Zero State: Disable Generate
                 runBtn.disabled = true;
-                compareBtn.disabled = true;
                 runBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
-                compareBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
                 runBtn.innerHTML = `
                     <span class="material-symbols-outlined">info</span>
                     NO STYLES AVAILABLE
                 `;
                 runBtn.title = "Please clone a handwriting style first.";
-                compareBtn.title = "Please clone a handwriting style first.";
                 return;
             }
             
             // Restore button state if styles exist
             runBtn.disabled = false;
-            compareBtn.disabled = false;
             runBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
-            compareBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
             runBtn.innerHTML = `
                 <span class="material-symbols-outlined">analytics</span>
                 RUN SYNTHESIS ENGINE
             `;
             runBtn.title = "";
-            compareBtn.title = "";
 
             availableStyles.forEach(style => {
                 const opt = document.createElement('option');
@@ -817,8 +1737,8 @@
 
         // Export Functions
         async function exportPNG() {
-            const container = document.getElementById('output-text');
-            const images = container.querySelectorAll('img');
+            const container = document.getElementById('writing-grid');
+            const images = container.querySelectorAll('img.glyph-img');
             if (images.length === 0) return alert("No content to export");
 
             // Compute robust bounds from actual rendered image rects to avoid clipping.
@@ -877,8 +1797,8 @@
                 return;
             }
 
-            const container = document.getElementById('output-text');
-            const images = container.querySelectorAll('img');
+            const container = document.getElementById('writing-grid');
+            const images = container.querySelectorAll('img.glyph-img');
             if (images.length === 0) return alert("No content to export");
             
             const width = container.scrollWidth;
