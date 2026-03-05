@@ -1,3 +1,29 @@
+## 短期原型计划（记录）：逐笔风格化原型  — 2026-03-05
+
+目的：在没有训练好风格模型的前提下，快速落地一个可运行的逐笔书写原型，用以验证“按笔生成→评分→重试→锁定”的控制流和可视化体验，便于后续替换为学习型模块。
+核心思路：
+- 使用用户约 30 字样本提取轻量 `style-profile`（统计笔宽、起点偏移、倾角分布、曲率/墨迹密度等），作为风格近似。 
+- 以 `makemeahanzi` / `hanzi-writer` 的骨架（中线/笔画路径）为目标骨架，对每一笔生成若干参数化变体（起点/角度/尺度/路径扰动/笔触宽度）。
+- 对每个候选渲染并评分：综合风格相似度 + 骨架符合度 + 稳定性惩罚；若最高分 ≥ 阈值则接受并锁定， 否则对高分候选做变异再试（最多 N 次）。
+- 前端以逐笔 SVG 动画播放写入过程，显示每笔尝试记录与是否被接受，允许交互调整阈值以便调参。
+
+短期实现步骤（优先级与交付物）：
+1. 数据与样本处理：上传或采集 ~30 字样本；标准化尺寸并提取简单统计特征（风格 profile）。
+2. 候选生成器（服务端）：对骨架每笔生成 K 个变体（平移/旋转/缩放/噪声/笔触参数）。
+3. 评分函数（服务端）：实现 raster + 向量混合评分（风格相似度 + 距离到骨架 + 稳定性惩罚）。
+4. 流程控制器 API：`POST /api/optimize_char`，返回每字每笔的候选与最终 accepted 路径及尝试记录。 
+5. 前端可视化：在 `generate.html` 中实现逐笔 SVG 播放器并绑定 `/api/optimize_char` 输出（每笔动画 + 分数信息 + 阈值调节）。
+6. 迭代：用可视化反馈调节评分与变异策略；随后替换为学习型 style-encoder / 条件生成器（中期目标）。
+
+接口草案（最小版）：
+- `POST /api/optimize_char` 输入：{ text, threshold?, max_retries?, k_candidates? }
+- 返回：{ items: [ { char, strokes: [ { path, stroke_style, score, accepted, attempts:[{score,params}] } ], passed } ] }
+
+短期里程碑（交付验收）：
+- 服务端：候选生成 + 单笔评分 + 单字优化流程并提供调试输出。 
+- 前端：每字逐笔动画展示，能看到 accepted / retried 状态与分数，阈值可调。
+
+下一步（基于你偏好先看可视化）：我将先实现前端逐笔 SVG 播放器并把现有 `/api/stroke_flow_run` 或新 `/api/optimize_char` 的输出映射到写字格进行播放。你确认我现在开始实现前端可视化吗？
 # AI Context & Progress Log
 
 > **Purpose**: This file maintains the continuity of the development context. Please read this first when starting a new session.
@@ -456,3 +482,23 @@ Recommended order:
 2. "Fix training dataset loader to skip non-directory files (.gitkeep)"
 
 **Status**: Verified end-to-end training pipeline working correctly. Ready to clean up and commit.
+
+---
+
+## 📝 Session Log — 2026-03-05
+
+Summary of today's work:
+- 启动并调试 `Generate` 页面，集成本地 `makemeahanzi` 数据源；后端提供 `/api/stroke_order` 与 `/api/stroke_flow_run` 接口供前端查询与批量运行。
+- 在前端实现格内逐笔显现动画并将右下预览与格内播放同步；尝试为大预览加入笔迹绘制（stroke-dashoffset）动画，但该改动导致大字显示顺序不对，用户要求回滚。
+- 已回滚 `animatePreviewStroke` 并恢复使用 `renderStrokeFrame(item,index)`，服务器已重启并验证响应正常。
+
+Current state (end of day):
+- Backend: `makemeahanzi` 适配器可用，缓存与清理端点存在，`/api/stroke_flow_run` 返回每字笔画数据。
+- Frontend: 写字格逐格播放功能正常；大预览已恢复为原始逐笔显示（未绘制动画）。
+- Pending: 如需重做绘制动画，需先修正笔画顺序与同步逻辑或直接使用服务器端顺序保证一致性。
+
+Actions performed now:
+- 将本次会话记录写入 `AI_CONTEXT.md` 并提交到本地仓库。
+- 已准备把修改推送到远程 GitHub 仓库（稍后执行 push）。
+
+End of log.
