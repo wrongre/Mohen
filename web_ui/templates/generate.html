@@ -829,6 +829,8 @@
             });
         }
 
+        
+
         function stopStrokePlayback() {
             strokeDemoState.playing = false;
             if (strokeDemoState.playTimer) {
@@ -896,7 +898,34 @@
             return sampled;
         }
 
+        // Attempt to load offline style profile aggregate (if available)
+        (function(){
+            try {
+                fetch('/static/style_profiles/MyStyle.json').then(r=>{
+                    if (!r.ok) return null;
+                    return r.json();
+                }).then(js=>{
+                    if (!js) return;
+                    window.loadedStyleProfileAggregate = js.aggregate || null;
+                    console.log('Loaded style profile aggregate', window.loadedStyleProfileAggregate);
+                }).catch(()=>{});
+            } catch(e){}
+        })();
+
         function buildStyleProfile(char) {
+            const agg = window.loadedStyleProfileAggregate || null;
+            if (agg) {
+                const pen_mean = (agg.pen_width && agg.pen_width.mean) ? agg.pen_width.mean : 3.0;
+                const pen_std = (agg.pen_width && agg.pen_width.std) ? agg.pen_width.std : 1.0;
+                const slant_deg = (agg.slant_deg && agg.slant_deg.mean) ? agg.slant_deg.mean : 0.0;
+                const curvature = (agg.curvature_mean_deg && agg.curvature_mean_deg.mean) ? agg.curvature_mean_deg.mean : 20.0;
+                const slant = Math.max(-0.14, Math.min(0.14, (slant_deg / 90) * 0.14));
+                const scaleX = Math.max(0.7, Math.min(1.3, 0.9 + (pen_mean - 2.5) / 10));
+                const scaleY = Math.max(0.7, Math.min(1.3, 0.9 + (pen_mean - 2.5) / 12));
+                const baseNoise = Math.max(2, Math.min(40, 6 + pen_std * 8 + curvature / 10));
+                return { scaleX, scaleY, slant, baseNoise };
+            }
+
             const code = char.codePointAt(0) || 0;
             const hashA = (Math.sin(code * 0.017) + 1) / 2;
             const hashB = (Math.sin(code * 0.031 + 1.7) + 1) / 2;
@@ -1216,7 +1245,7 @@
             strokeStatus.textContent = `Playing ${char} stroke order...`;
 
             let step = 0;
-            const playStep = () => {
+            const playStep = async () => {
                 if (!strokeDemoState.playing) return;
                 renderStrokeFrame(item, step);
                 step += 1;
@@ -1293,6 +1322,86 @@
                 retries,
                 strokeLabel
             });
+        }
+
+        // Animate server-returned stroke items into writing grid cells
+        async function animateStrokeInCell(item, cell) {
+            if (!cell) return;
+            const glyphWrap = cell.querySelector('.writing-glyph');
+            glyphWrap.innerHTML = '';
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 1024 1024');
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(0, ${1024 - STROKE_PREVIEW_UP_OFFSET}) scale(1, -1)`);
+            svg.appendChild(g);
+            glyphWrap.appendChild(svg);
+
+            if (!item || !Array.isArray(item.strokes)) return;
+
+            for (let s = 0; s < item.strokes.length; s++) {
+                const pathData = item.strokes[s];
+                const base = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                base.setAttribute('d', pathData);
+                base.setAttribute('class', 'stroke-path-base');
+                g.appendChild(base);
+
+                const current = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                current.setAttribute('d', pathData);
+                current.setAttribute('class', 'stroke-path-current');
+                current.style.opacity = '0';
+                current.style.transition = 'opacity 220ms linear';
+                g.appendChild(current);
+
+                // 同步更新右下大预览（逐笔显示当前字符的书写过程）
+                try {
+                    renderStrokeFrame(item, s);
+                } catch (e) {
+                    // ignore render errors
+                }
+
+                // reveal current stroke
+                await sleep(60);
+                current.style.opacity = '1';
+                await sleep(260);
+
+                // mark as complete
+                current.setAttribute('class', 'stroke-path-complete');
+            }
+        }
+
+        async function playServerItems(items) {
+            const visibleChars = writingState.visibleChars || [];
+            for (let i = 0; i < items.length; i++) {
+                const it = items[i] || {};
+                const cell = writingGrid.querySelector(`[data-index="${i}"]`);
+                if (cell) {
+                    cell.classList.remove('state-pending', 'state-writing', 'state-pass', 'state-fail');
+                    cell.classList.add('state-writing');
+                    if (it.available && Array.isArray(it.strokes) && it.strokes.length > 0) {
+                        try {
+                            await animateStrokeInCell(it, cell);
+                            if (it.passed) {
+                                cell.classList.remove('state-writing');
+                                cell.classList.add('state-pass');
+                            } else {
+                                cell.classList.remove('state-writing');
+                                cell.classList.add('state-fail');
+                            }
+                        } catch (e) {
+                            cell.classList.remove('state-writing');
+                            cell.classList.add('state-fail');
+                        }
+                    } else {
+                        cell.classList.remove('state-writing');
+                        cell.classList.add('state-fail');
+                    }
+                }
+                updateWritingStatus({ cursor: i + 1, score: it.score || null, retries: it.retries || 0, strokeLabel: it.passed ? 'pass' : 'fail' });
+                await sleep(140);
+            }
         }
 
         function splitTextIntoChunks(text, chunkSize) {
@@ -1441,13 +1550,63 @@
         });
 
         strokeFlowBtn.addEventListener('click', () => {
-            runStrokeFlowDemo().catch(err => {
-                console.error(err);
-                strokeDemoState.flowRunning = false;
-                setDemoButtonsBusy(false);
-                strokeStatus.textContent = 'Flow runner crashed unexpectedly.';
-                strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)';
-            });
+            (async () => {
+                // Try server-side stroke flow first (makemeahanzi integration).
+                try {
+                    const payload = {
+                        text: textInput.value,
+                        threshold: Number(strokeThresholdInput.value || 0.72),
+                        max_retries: Number(strokeMaxRetriesInput.value || 2)
+                    };
+                    strokeFlowBtn.textContent = 'RUNNING...';
+                    setDemoButtonsBusy(true);
+                    const resp = await fetch('/api/stroke_flow_run', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (resp.status === 501) {
+                        // Server-side integration not available; fallback to client demo
+                        setDemoButtonsBusy(false);
+                        strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)';
+                        await runStrokeFlowDemo();
+                        return;
+                    }
+
+                    if (!resp.ok) {
+                        throw new Error('Server stroke flow failed');
+                    }
+
+                    const data = await resp.json();
+                    const items = data.items || [];
+
+                    // Play server-returned stroke items into the writing grid
+                    const visibleChars = getVisibleChars(textInput.value);
+                    resetWritingSurface(visibleChars);
+                    await playServerItems(items);
+
+                    const passedCount = items.filter(it => it.passed).length;
+                    strokeStatus.textContent = `Flow complete · pass ${passedCount}/${items.length}`;
+                    strokeFlowBtn.textContent = 'FLOW COMPLETE';
+                    setDemoButtonsBusy(false);
+                    setTimeout(() => { strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)'; }, 900);
+                } catch (err) {
+                    console.error(err);
+                    // Fallback to original client-side demo if anything goes wrong
+                    try {
+                        setDemoButtonsBusy(false);
+                        strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)';
+                        await runStrokeFlowDemo();
+                    } catch (e) {
+                        console.error(e);
+                        strokeDemoState.flowRunning = false;
+                        setDemoButtonsBusy(false);
+                        strokeStatus.textContent = 'Flow runner crashed unexpectedly.';
+                        strokeFlowBtn.textContent = 'RUN STROKE FLOW (DEMO)';
+                    }
+                }
+            })();
         });
 
         // Zoom Logic

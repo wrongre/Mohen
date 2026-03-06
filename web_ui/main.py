@@ -1,4 +1,7 @@
 import os
+import sys
+# make sure project root is on path early so local stubs (e.g. python_multipart) can be imported
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 from threading import Lock
 from urllib.parse import quote
@@ -8,8 +11,6 @@ from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils_slice import process_scanned_template, crop_and_save
 from pydantic import BaseModel
 
@@ -44,6 +45,9 @@ os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="web_ui/static"), name="static")
 app.mount("/sliced_images", StaticFiles(directory="data_examples/processed"), name="sliced_images")
+# Serve synthesized samples so frontend can fetch generated results
+os.makedirs("outputs/synth_samples", exist_ok=True)
+app.mount("/synth_samples", StaticFiles(directory="outputs/synth_samples"), name="synth_samples")
 
 # Global store for processed chars (in memory for now, DB later)
 PROCESSED_CHARS = []
@@ -318,6 +322,27 @@ def _candidate_hanzi_data_paths(char: str):
 def _load_hanzi_payload(char: str):
     if not char or len(char) != 1:
         return None, "invalid_char"
+    # Prefer makemeahanzi dataset if available (local graphics.txt adapter)
+    try:
+        import makemeahanzi
+        try:
+            graphics_idx = makemeahanzi._load_graphics_file()
+            if isinstance(graphics_idx, dict) and char in graphics_idx:
+                entry = graphics_idx.get(char) or {}
+                payload = {
+                    "character": entry.get("character", char),
+                    "strokes": entry.get("strokes") or [],
+                    "medians": entry.get("medians") or []
+                }
+                with HANZI_DATA_LOCK:
+                    HANZI_DATA_CACHE[char] = payload
+                return payload, "makemeahanzi"
+        except Exception:
+            # If makemeahanzi exists but fails to load, fall through to other sources
+            pass
+    except Exception:
+        # makemeahanzi not installed — continue with existing lookup order
+        pass
 
     with HANZI_DATA_LOCK:
         if char in HANZI_DATA_CACHE:
@@ -357,6 +382,39 @@ def _load_hanzi_payload(char: str):
     return None, "not_found"
 
 
+@app.post("/api/stroke_flow_run")
+async def stroke_flow_run(payload: dict):
+    """Server-side stroke flow runner (optional).
+    If a Python package `makemeahanzi` is available, delegates to it.
+    Otherwise returns 501 so the frontend can fallback to client-side demo.
+    Expected payload: { text: str, threshold?:float, max_retries?:int }
+    Returns: { items: [ { char, strokes, medians, passed, score, retries } ] }
+    """
+    text = payload.get("text", "") if isinstance(payload, dict) else ""
+    try:
+        threshold = float(payload.get("threshold", 0.72))
+    except:
+        threshold = 0.72
+    try:
+        max_retries = int(payload.get("max_retries", 2))
+    except:
+        max_retries = 2
+
+    visible_chars = [c for c in text if c.strip()]
+
+    # Try to delegate to makemeahanzi package if available
+    try:
+        import makemeahanzi
+        # makemeahanzi.run_flow is assumed to accept (chars, options) and return items
+        # This is intentionally generic: adapt if your makemeahanzi API differs.
+        items = makemeahanzi.run_flow(visible_chars, {"threshold": threshold, "max_retries": max_retries})
+        return JSONResponse(content={"items": items})
+    except ModuleNotFoundError:
+        return JSONResponse(content={"message": "makemeahanzi not installed on server"}, status_code=501)
+    except Exception as e:
+        return JSONResponse(content={"message": f"makemeahanzi error: {str(e)}"}, status_code=500)
+
+
 @app.get("/api/stroke_order")
 async def get_stroke_order(char: str = Query(default=""), text: str = Query(default=""), max_chars: int = Query(default=20, ge=1, le=200)):
     targets = []
@@ -381,6 +439,24 @@ async def get_stroke_order(char: str = Query(default=""), text: str = Query(defa
     items = []
     for index, current_char in enumerate(targets):
         payload, source = _load_hanzi_payload(current_char)
+        # If makemeahanzi has the character, prefer it as the source even when a cache entry exists
+        try:
+            import makemeahanzi as _mm
+            try:
+                _idx = _mm._load_graphics_file()
+                if isinstance(_idx, dict) and current_char in _idx:
+                    source = "makemeahanzi"
+                    # ensure payload matches makemeahanzi entry
+                    entry = _idx.get(current_char) or {}
+                    payload = {
+                        "character": entry.get("character", current_char),
+                        "strokes": entry.get("strokes") or [],
+                        "medians": entry.get("medians") or []
+                    }
+            except Exception:
+                pass
+        except Exception:
+            pass
         if not payload:
             items.append({
                 "index": index,
@@ -408,6 +484,18 @@ async def get_stroke_order(char: str = Query(default=""), text: str = Query(defa
         })
 
     return JSONResponse(content={"items": items})
+
+
+@app.post("/api/clear_hanzi_cache")
+async def clear_hanzi_cache(char: str = Query(default="")):
+    """Clear cached hanzi payloads. If `char` provided, clears only that entry; otherwise clears all."""
+    with HANZI_DATA_LOCK:
+        if char:
+            HANZI_DATA_CACHE.pop(char, None)
+            return JSONResponse(content={"cleared": char})
+        else:
+            HANZI_DATA_CACHE.clear()
+            return JSONResponse(content={"cleared_all": True})
 
 class GenerateRequest(BaseModel):
     text: str
@@ -582,6 +670,85 @@ def get_inference_profile(preset: str, variation_ratio: float, preset_version: s
         "punctuation_angle_scale": punctuation_angle_scale,
         "punctuation_similarity_floor": punctuation_similarity_floor,
     }
+
+
+@app.post("/api/synthesize_profile")
+async def synthesize_profile(char: str = Query(default=""), profile: str = Query(default="MyStyle")):
+    """Synthesize a single character using an offline style profile.
+    Returns JSON: { url: str, path: str }
+    """
+    # Determine profile path
+    profile_path = None
+    # If provided as path, use directly
+    if os.path.exists(profile):
+        profile_path = profile
+    else:
+        # Try static copy first
+        candidate = os.path.join("web_ui", "static", "style_profiles", f"{profile}.json")
+        if os.path.exists(candidate):
+            profile_path = candidate
+        else:
+            candidate2 = os.path.join("data_examples", "style_profiles", f"{profile}.json")
+            if os.path.exists(candidate2):
+                profile_path = candidate2
+
+    if not profile_path:
+        return JSONResponse(content={"error": "profile_not_found"}, status_code=404)
+
+    # Prepare content image: try to find a pre-rendered content image, otherwise render from font
+    content_img_path = None
+    char = (char or "").strip()
+    if not char or len(char) != 1:
+        return JSONResponse(content={"error": "invalid_char"}, status_code=400)
+
+    direct_content = os.path.join("data_examples", "train", "ContentImage", f"{char}.jpg")
+    if os.path.exists(direct_content):
+        content_img_path = direct_content
+    else:
+        # Try to render from bundled font
+        try:
+            from utils import load_ttf, ttf2im
+            # choose a font present in static/fonts
+            ttf_candidates = []
+            for root, dirs, files in os.walk("web_ui/static/fonts"):
+                for f in files:
+                    if f.lower().endswith('.ttf'):
+                        ttf_candidates.append(os.path.join(root, f))
+            if ttf_candidates:
+                ttf_path = ttf_candidates[0]
+            else:
+                ttf_path = None
+
+            if ttf_path:
+                font_obj = load_ttf(ttf_path, fsize=256)
+                glyph = ttf2im(font_obj, char, fsize=256)
+                tmp_dir = os.path.join("outputs", "synth_samples", "tmp")
+                os.makedirs(tmp_dir, exist_ok=True)
+                tmp_path = os.path.join(tmp_dir, f"{ord(char):04x}.png")
+                glyph.save(tmp_path)
+                content_img_path = tmp_path
+        except Exception:
+            content_img_path = None
+
+    if not content_img_path or not os.path.exists(content_img_path):
+        return JSONResponse(content={"error": "content_image_unavailable"}, status_code=404)
+
+    # Call synthesizer
+    try:
+        import scripts.synthesize_from_profile as synth_mod
+    except Exception as e:
+        return JSONResponse(content={"error": "synth_module_import_failed", "detail": str(e)}, status_code=500)
+
+    try:
+        out_path = synth_mod.synth_one(content_img_path, profile_path, out_dir=os.path.join("outputs", "synth_samples"))
+        if not out_path:
+            return JSONResponse(content={"error": "synthesis_failed"}, status_code=500)
+        # Build URL
+        fname = os.path.basename(out_path)
+        url = f"/synth_samples/{quote(fname)}"
+        return JSONResponse(content={"url": url, "path": out_path})
+    except Exception as e:
+        return JSONResponse(content={"error": "synthesis_exception", "detail": str(e)}, status_code=500)
 
 
 def _normalize_ink_map(image_arr: np.ndarray):

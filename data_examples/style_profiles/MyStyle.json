@@ -1,0 +1,173 @@
+{
+  "meta": {
+    "style_dir": "data_examples\\train\\TargetImage\\MyStyle",
+    "n_images": 30
+  },
+  "images": [
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+一.jpg",
+      "slant_mean": 0,
+      "width_mean": 6.831640788487026
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+乙.jpg",
+      "slant_mean": 0,
+      "width_mean": 6.36145532314594
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+也.jpg",
+      "slant_mean": -0.004187431655276677,
+      "width_mean": 4.452506640463165
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+十.jpg",
+      "slant_mean": -3.399016900281939,
+      "width_mean": 5.112452214902586
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+和.jpg",
+      "slant_mean": -4.606686864686351,
+      "width_mean": 4.995501596419538
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+回.jpg",
+      "slant_mean": -7.858109506641617,
+      "width_mean": 4.665189388219048
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+国.jpg",
+      "slant_mean": -0.9533153343662832,
+      "width_mean": 4.603869507623755
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+墨.jpg",
+      "slant_mean": 0,
+      "width_mean": 3.604532024799249
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+巫.jpg",
+      "slant_mean": -7.142176394409876,
+      "width_mean": 6.537846386432648
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+幽.jpg",
+      "slant_mean": 4.540038740742726,
+      "width_mean": 4.963307752676889
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+德.jpg",
+      "slant_mean": 0.002208942658106446,
+      "width_mean": 4.765786342880353
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+戈.jpg",
+      "slant_mean": 11.309932474020215,
+      "width_mean": 5.54940483046741
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+月.jpg",
+      "slant_mean": -6.401288671828128,
+      "width_mean": 5.7520108968019485
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+木.jpg",
+      "slant_mean": 1.9852269665737237,
+      "width_mean": 5.501705680574689
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+气.jpg",
+      "slant_mean": -7.765155722803459,
+      "width_mean": 4.428518218715696
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+水.jpg",
+      "slant_mean": -11.544033292863716,
+      "width_mean": 5.256710805088641
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+永.jpg",
+      "slant_mean": 0,
+      "width_mean": 4.488306972342477
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+灵.jpg",
+      "slant_mean": 0,
+      "width_mean": 5.179143318590128
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+用.jpg",
+      "slant_mean": 2.1202222654953897,
+      "width_mean": 4.369621753692627
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+神.jpg",
+      "slant_mean": -3.5770523143730943,
+      "width_mean": 4.994173420549004
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+繁.jpg",
+      "slant_mean": -7.63099938048026,
+      "width_mean": 4.593291538898076
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+美.jpg",
+      "slant_mean": 17.102728969052365,
+      "width_mean": 4.551436147235688
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+舞.jpg",
+      "slant_mean": -5.194428907734803,
+      "width_mean": 4.464400976132124
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+走.jpg",
+      "slant_mean": 0,
+      "width_mean": 4.794246093584941
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+身.jpg",
+      "slant_mean": -1.1626288273607235,
+      "width_mean": 4.601228520467684
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+这.jpg",
+      "slant_mean": 3.366460663429791,
+      "width_mean": 5.41747940239841
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+韵.jpg",
+      "slant_mean": -5.0138891612327345,
+      "width_mean": 5.383354899647472
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+飞.jpg",
+      "slant_mean": -3.08654274106707,
+      "width_mean": 4.786279709510554
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+魂.jpg",
+      "slant_mean": -3.5763343749973586,
+      "width_mean": 4.861484870518724
+    },
+    {
+      "path": "data_examples\\train\\TargetImage\\MyStyle\\MyStyle+龙.jpg",
+      "slant_mean": -8.13010235415598,
+      "width_mean": 5.176065115446455
+    }
+  ],
+  "aggregate": {
+    "pen_width": {
+      "mean": 4.905943670904043,
+      "std": 1.5439666223243116,
+      "p50": 4.393799781799316
+    },
+    "slant_deg": {
+      "mean": -2.2612778370866247,
+      "std": 8.502736740147824
+    },
+    "curvature_mean_deg": {
+      "mean": 87.489125791487,
+      "std": 77.31017390497125
+    }
+  }
+}

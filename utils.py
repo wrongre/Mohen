@@ -2,10 +2,18 @@ import os
 import cv2
 import yaml
 import copy
-import pygame
+# optional dependency; some branches may not need pygame
+try:
+    import pygame
+except ImportError:
+    pygame = None
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
-from fontTools.ttLib import TTFont
+# fontTools is only required for font checks; allow absence
+try:
+    from fontTools.ttLib import TTFont
+except ImportError:
+    TTFont = None
 
 import torch
 import torchvision.transforms as transforms
@@ -83,6 +91,9 @@ def normalize_mean_std(image):
 
 
 def is_char_in_font(font_path, char):
+    if TTFont is None:
+        # fontTools unavailable; cannot check
+        return False
     try:
         TTFont_font = TTFont(font_path)
     except:

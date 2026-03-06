@@ -4,7 +4,12 @@ import torch.nn as nn
 import src.modules.scr_modules as SCRModules
 
 from info_nce import InfoNCE
-import kornia.augmentation as K
+# kornia not available by default on this branch; provide a simple fallback
+try:
+    import kornia.augmentation as K
+except ImportError:
+    K = None
+
 
 class SCR(nn.Module):
 
@@ -33,10 +38,15 @@ class SCR(nn.Module):
         )
 
         # Pos Image random resize and crop
-        self.patch_sampler = K.RandomResizedCrop(
-            (image_size, image_size),
-            scale=(0.8,1.0),
-            ratio=(0.75,1.33))
+        if K is not None:
+            self.patch_sampler = K.RandomResizedCrop(
+                (image_size, image_size),
+                scale=(0.8,1.0),
+                ratio=(0.75,1.33))
+        else:
+            # fallback: identity sampler (no augmentation)
+            self.patch_sampler = lambda x: x
+
     
     def forward(self, sample_imgs, pos_imgs, neg_imgs, nce_layers='0,1,2,3,4,5'):
         
