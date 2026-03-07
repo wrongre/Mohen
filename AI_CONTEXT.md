@@ -33,6 +33,15 @@ Core Concept:
     - *Hypothesis*: Random sampling range might be too wide/narrow, or the scoring landscape has local maxima.
     - *Future Work*: Consider Simulated Annealing or more intelligent parameter adjustment during retries.
 
+**Key Insights (Style Definition)**:
+- **Layout vs. Style**: A font's legibility depends on the general Layout (Skeleton), which is relatively stable across fonts.
+- **Style Differentiators**: Style is primarily defined by:
+    1.  **Start/End Positions (Pos)**: Critical. e.g., Yan style has short, high starts; skeletons might be lower/longer.
+    2.  **Slant**: Overall tilt of the character.
+    3.  **Shape/Curvature**: Specific stroke trajectories (e.g., length of the hook in "Vertical Curve Hook").
+    4.  **Width**: (For brush styles) Variation in stroke thickness.
+- **Implication**: Future optimization should prioritize **Start/End Point accuracy** over general centroid alignment, as this is where "Style" lives.
+
 **Next Steps**:
 - Sync code to GitHub.
 - Prepare for integration with the main Web UI.
