@@ -58,6 +58,10 @@ Core Concept:
     - Long Heng might be distinct due to specific shape features (e.g., curvature).
 - **Dynamics**: Components should not be static; they must support parametric variation to simulate dynamic writing (avoiding "dead/rigid" repetition).
 
+**Applicability to Cursive/Running Scripts**:
+- **Hidden Logic**: Even in Cursive (Cao) or Running (Xing) scripts, there is an underlying stroke logic (e.g., connected strokes are just standard strokes with "ligatures").
+- **Adaptability**: The "Shape First" approach is valid for these scripts too. The components might be more abstract or connected, but the principle of "Skeleton + Component" remains. The classifier just needs to recognize "connected stroke" types.
+
 **Next Steps**:
 - Sync code to GitHub.
 - Prepare for integration with the main Web UI.
