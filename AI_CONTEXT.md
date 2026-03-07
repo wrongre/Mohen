@@ -42,6 +42,14 @@ Core Concept:
     4.  **Width**: (For brush styles) Variation in stroke thickness.
 - **Implication**: Future optimization should prioritize **Start/End Point accuracy** over general centroid alignment, as this is where "Style" lives.
 
+**Strategic Shift: Shape First (Component Assembly)**:
+- **Concept**: Instead of "Layout First -> Shape Adjustment" (perturbing a line), we propose "Shape First -> Fit to Skeleton".
+- **Method**:
+    1.  **Stroke Classification**: Identify skeleton strokes as Heng, Shu, Pie, Na, etc. (Verified feasible via `scripts/classify_stroke_types.py`).
+    2.  **Component Retrieval**: Fetch a prototypical "Yan-style Heng" or "Yan-style Pie" (from a pre-extracted library or clustered user inputs).
+    3.  **Warping**: Apply Affine or TPS (Thin Plate Spline) transformation to fit the prototype shape onto the target skeleton's start/end points.
+- **Goal**: Achieve strong "Flesh/Texture" stylization (e.g., Yan's thick hooks) even if structural alignment requires some relaxation. This mimics `mxFont`'s component approach but at the stroke level.
+
 **Next Steps**:
 - Sync code to GitHub.
 - Prepare for integration with the main Web UI.
