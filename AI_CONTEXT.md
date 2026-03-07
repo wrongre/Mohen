@@ -58,6 +58,15 @@ Core Concept:
     - Long Heng might be distinct due to specific shape features (e.g., curvature).
 - **Dynamics**: Components should not be static; they must support parametric variation to simulate dynamic writing (avoiding "dead/rigid" repetition).
 
+**Systemic Challenge: Skeleton-Taxonomy Discrepancy**:
+- **Problem**: Standard stroke databases (Map) and actual skeleton data (MakeMeAHanzi) often disagree. A dictionary may define a stroke as a "Pie" while the skeleton is geometrically a "Horizontal". Manual per-char adjustment is unscalable.
+- **Proposed Solution (Hybrid Alignment)**: 
+    - Instead of hard lookup, use **Semantic-Geometric Alignment**.
+    - 1. Retrieve the standard stroke sequence (e.g., "H, S, P...").
+    - 2. Perform geometric feature extraction on all segments of the actual skeleton.
+    - 3. Use an alignment algorithm (e.g., Greedy or DTW) to find the best mapping between the "ideal" sequence and the "real" geometry.
+    - This allows the system to correctly assign a "Pie" component to a "Horizontal-looking" skeleton segment based on its position in the stroke order.
+
 **Applicability to Cursive/Running Scripts**:
 - **Hidden Logic**: Even in Cursive (Cao) or Running (Xing) scripts, there is an underlying stroke logic (e.g., connected strokes are just standard strokes with "ligatures").
 - **Adaptability**: The "Shape First" approach is valid for these scripts too. The components might be more abstract or connected, but the principle of "Skeleton + Component" remains. The classifier just needs to recognize "connected stroke" types.
