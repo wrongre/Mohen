@@ -74,6 +74,7 @@ Core Concept:
     2. Normalize and cluster them (e.g., K-Means).
     3. Identify the ~50 distinct clusters that naturally emerge (e.g., "Flat Horizontal", "Vertical Hook", "Short Pie").
 - **Benefit**: This creates a taxonomy that is *native* to the skeleton data, eliminating the geometric discrepancy. We then map these native clusters to style components.
+- **Mapping to Standard**: While the clustering is data-driven, the final components must be labeled using the standard taxonomy (H, S, P, N) to preserve semantic meaning and compatibility with input methods. The result is a "Data-Driven Geometry mapped to Standard Semantics".
 
 **Applicability to Cursive/Running Scripts**:
 - **Hidden Logic**: Even in Cursive (Cao) or Running (Xing) scripts, there is an underlying stroke logic (e.g., connected strokes are just standard strokes with "ligatures").
