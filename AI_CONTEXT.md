@@ -50,6 +50,14 @@ Core Concept:
     3.  **Warping**: Apply Affine or TPS (Thin Plate Spline) transformation to fit the prototype shape onto the target skeleton's start/end points.
 - **Goal**: Achieve strong "Flesh/Texture" stylization (e.g., Yan's thick hooks) even if structural alignment requires some relaxation. This mimics `mxFont`'s component approach but at the stroke level.
 
+**Classification Standard (Taxonomy)**:
+- **Reference**: Use standard Chinese "Stroke Input Method" (笔画输入法) categories as the baseline.
+- **Complexity**: The component set is small (< 50 types), similar to Hiragana.
+- **Granularity**: 
+    - e.g., Short Heng and Medium Heng are likely the same component (scaled).
+    - Long Heng might be distinct due to specific shape features (e.g., curvature).
+- **Dynamics**: Components should not be static; they must support parametric variation to simulate dynamic writing (avoiding "dead/rigid" repetition).
+
 **Next Steps**:
 - Sync code to GitHub.
 - Prepare for integration with the main Web UI.
