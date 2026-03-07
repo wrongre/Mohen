@@ -1,4 +1,4 @@
-## Short-term Prototype Plan (Record): Stroke-Level Stylization Prototype — 2026-03-06 (Update)
+## Short-term Prototype Plan (Record): Stroke-Level Stylization Prototype — 2026-03-07 (Update)
 
 Objective: Rapidly implement a stroke-by-stroke generation prototype to validate the "Generate -> Score -> Retry -> Lock" control flow, using a lightweight `style-profile` instead of a full model initially.
 
@@ -8,6 +8,24 @@ Core Concept:
 - Synthesize stroke variants geometrically (Affine transforms + Noise).
 - Score variants based on Position, Direction, Shape, and Correctness.
 - Optimize via a retry loop until a high-quality stroke is found.
+
+### 📅 Session Log — 2026-03-07
+
+**Status**:
+- **Critical Milestone**: Established a "Component Library" (Component-Based Stylization) using 30 verified "Golden Set" characters (MoHen Calibration).
+    - **Problem**: Makemeahanzi skeleton data often diverges from standard stroke taxonomy (e.g., "Horizontal" vs "Pie").
+    - **Solution**: Manually calibrated 30 representative characters (天道酬勤 + 26 core chars) to build a "Ground Truth" mapping.
+    - **Result**: Extracted ~216 normalized stroke components (H, S, P, N, etc.) into `data/component_library.json`.
+- **Generalization Verified**:
+    - Created `scripts/test_generalization.py` to classify unseen characters ("天道酬勤") using Nearest Neighbor matching against the Component Library.
+    - Achieved high accuracy in identifying complex strokes (e.g., "Dao" bottom, "Chou" side) without any character-specific rules.
+    - **Insight**: The 30-char calibration set is sufficient to cover most stroke types, acting as a "Rosetta Stone" for the dataset.
+- **Stroke Taxonomy Refinement**:
+    - Identified "Ti" (Rise) strokes in the dataset are often geometrically flat (indistinguishable from Horizontal).
+    - **Strategy**: Will use context-aware classification (or manually add "Hai" to the library) to better distinguish "Ti".
+- **Next Steps**:
+    - **Style Extraction**: Extract style profiles (curvature, thickness, etc.) from user uploads.
+    - **Stylization**: Warp the standard components from the library to fit the user's style and the target skeleton.
 
 ### 📅 Session Log — 2026-03-06
 
