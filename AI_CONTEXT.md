@@ -67,6 +67,14 @@ Core Concept:
     - 3. Use an alignment algorithm (e.g., Greedy or DTW) to find the best mapping between the "ideal" sequence and the "real" geometry.
     - This allows the system to correctly assign a "Pie" component to a "Horizontal-looking" skeleton segment based on its position in the stroke order.
 
+**Alternative Strategy: Data-Driven Stroke Clustering (Bottom-Up)**:
+- **Concept**: Instead of forcing external taxonomy onto the skeleton data, analyze the skeleton dataset itself to find its inherent "primitive shapes".
+- **Method**: 
+    1. Extract thousands of strokes from `makemeahanzi`.
+    2. Normalize and cluster them (e.g., K-Means).
+    3. Identify the ~50 distinct clusters that naturally emerge (e.g., "Flat Horizontal", "Vertical Hook", "Short Pie").
+- **Benefit**: This creates a taxonomy that is *native* to the skeleton data, eliminating the geometric discrepancy. We then map these native clusters to style components.
+
 **Applicability to Cursive/Running Scripts**:
 - **Hidden Logic**: Even in Cursive (Cao) or Running (Xing) scripts, there is an underlying stroke logic (e.g., connected strokes are just standard strokes with "ligatures").
 - **Adaptability**: The "Shape First" approach is valid for these scripts too. The components might be more abstract or connected, but the principle of "Skeleton + Component" remains. The classifier just needs to recognize "connected stroke" types.
